@@ -2,11 +2,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './components/layouts/DashboardLayout';
 import { AuthLayout } from './components/layouts/AuthLayout';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { BrandingProvider } from './contexts/BrandingContext';
 
 // Pages
 import Dashboard from './pages/Dashboard';
 import Borrowers from './pages/Borrowers';
 import Loans from './pages/Loans';
+import FixedDeposits from './pages/FixedDeposits';
 import Repayments from './pages/Repayments';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -16,29 +19,34 @@ import ForgotPassword from './pages/ForgotPassword';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Auth Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-        </Route>
+    <ThemeProvider defaultTheme="system" storageKey="vanniloan-ui-theme">
+      <BrandingProvider>
+        <BrowserRouter>
+        <Routes>
+          {/* Auth Routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+          </Route>
 
-        {/* Dashboard Routes */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/borrowers" element={<Borrowers />} />
-          <Route path="/loans" element={<Loans />} />
-          <Route path="/repayments" element={<Repayments />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/notifications" element={<Notifications />} />
-        </Route>
+          {/* Dashboard Routes */}
+          <Route element={<DashboardLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/borrowers" element={<Borrowers />} />
+            <Route path="/loans" element={<Loans />} />
+            <Route path="/fixed-deposits" element={<FixedDeposits />} />
+            <Route path="/repayments" element={<Repayments />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/notifications" element={<Notifications />} />
+          </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+      </BrandingProvider>
+    </ThemeProvider>
   );
 }
 

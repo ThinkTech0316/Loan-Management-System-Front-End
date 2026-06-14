@@ -10,17 +10,25 @@ function cn(...inputs: ClassValue[]) {
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
+  glass?: boolean;
 }
 
 
-export const Card: React.FC<CardProps> = ({ hoverable = true, className, children, ...props }) => {
+export const Card: React.FC<CardProps> = ({ hoverable = true, glass = false, className, children, ...props }) => {
   return (
     <div
       className={cn(
-        'rounded-xl border border-slate-200 bg-white text-slate-950 shadow-premium dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50',
-        hoverable && 'transition-all duration-300 hover:shadow-lg',
+        'rounded-2xl border relative overflow-hidden',
+        glass && 'glass-card',
+        !glass && 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),0_2px_10px_-2px_rgba(0,0,0,0.02)]',
+        hoverable && 'transition-all duration-400 hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-0.5',
         className
       )}
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderColor: 'var(--color-divider)',
+        color: 'var(--color-body)',
+      }}
       {...props}
     >
       {children}

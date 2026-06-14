@@ -2,560 +2,325 @@ import React from 'react';
 import { Card } from '../components/atoms/Card';
 import { Button } from '../components/atoms/Button';
 import { Input } from '../components/atoms/Input';
-import { Badge } from '../components/atoms/Badge.tsx';
 import { 
   User, 
   Building2, 
-  ShieldCheck, 
   Bell, 
-  CreditCard,
-  ChevronRight,
-  Upload,
-  Download,
-  ShieldAlert
+  Shield, 
+  Palette, 
+  Save,
+  Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-type SettingsTab = 'profile' | 'organization' | 'security' | 'notifications' | 'billing';
+import { useBranding } from '../contexts/BrandingContext';
 
 const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>('profile');
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = React.useState('profile');
+  const [isSaving, setIsSaving] = React.useState(false);
+  const { systemName, setSystemName, logoColor, setLogoColor, logoUrl, setLogoUrl } = useBranding();
 
-  // Profile Form State
-  const [fullName, setFullName] = React.useState('Arun Kumar');
-  const [email, setEmail] = React.useState('arun@vanniloan.com');
-  const [phone, setPhone] = React.useState('+91 98765 43210');
-  const [designation, setDesignation] = React.useState('Administrator');
-  const [profilePhoto, setProfilePhoto] = React.useState<string | null>(null);
+  // Branding Form State
+  const [brandName, setBrandName] = React.useState(systemName);
+  const [brandColor, setBrandColor] = React.useState(logoColor);
+  const [brandLogoUrl, setBrandLogoUrl] = React.useState(logoUrl);
 
-  // Organization Form State
-  const [orgName, setOrgName] = React.useState('VanniLoan Finance Ltd.');
-  const [regNum, setRegNum] = React.useState('U65991TN2024PTC123456');
-  const [taxId, setTaxId] = React.useState('33AAFCD1234F1Z5');
-  const [orgAddress, setOrgAddress] = React.useState('12, West St, Chennai, Tamil Nadu');
-  const [currency, setCurrency] = React.useState('INR (₹)');
+  React.useEffect(() => {
+    setBrandName(systemName);
+    setBrandColor(logoColor);
+    setBrandLogoUrl(logoUrl);
+  }, [systemName, logoColor, logoUrl]);
 
-  // Security Form State
-  const [currentPassword, setCurrentPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
-
-  // Notifications Form State
-  const [notifyNewLoan, setNotifyNewLoan] = React.useState(true);
-  const [notifyRepayment, setNotifyRepayment] = React.useState(true);
-  const [smsAlerts, setSmsAlerts] = React.useState(false);
-  const [weeklyDigest, setWeeklyDigest] = React.useState(true);
-
-  // Handlers for Profile Photo
-  const handleTriggerUpload = () => {
-    fileInputRef.current?.click();
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    
+    // Save branding if on company tab
+    if (activeTab === 'company') {
+      setSystemName(brandName);
+      setLogoColor(brandColor);
+      setLogoUrl(brandLogoUrl);
+    }
+    
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Settings saved successfully!');
+    }, 1000);
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size exceeds the 10MB limit.');
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Image must be less than 2MB");
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProfilePhoto(reader.result as string);
-        toast.success('Profile photo uploaded and updated in memory!');
+        setBrandLogoUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemovePhoto = () => {
-    setProfilePhoto(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    toast.success('Profile photo removed successfully.');
-  };
-
-  // Save changes handlers
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName.trim() || !email.trim()) {
-      toast.error('Name and Email are required.');
-      return;
-    }
-    toast.success('General Profile Information saved successfully!');
-  };
-
-  const handleSaveOrganization = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orgName.trim()) {
-      toast.error('Organization Name is required.');
-      return;
-    }
-    toast.success('Organization Information saved successfully!');
-  };
-
-  const handleUpdatePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword) {
-      toast.error('Please enter your current password.');
-      return;
-    }
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('Confirm password does not match new password.');
-      return;
-    }
-    toast.success('Your security password has been updated!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  };
-
-  const handleSaveNotifications = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success('Notification preferences updated successfully!');
-  };
-
-  const handleDeactivateAccount = () => {
-    toast.warning('Account deactivation is blocked in demo mode.');
-  };
+  const tabs = [
+    { id: 'profile', label: 'My Profile', icon: User, color: 'primary' },
+    { id: 'company', label: 'Company Info', icon: Building2, color: 'secondary' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, color: 'amber' },
+    { id: 'security', label: 'Security', icon: Shield, color: 'blue' },
+    { id: 'appearance', label: 'Appearance', icon: Palette, color: 'primary' },
+  ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white m-0">Settings</h1>
-        <p className="text-slate-500 mt-1">Manage your organization profile and application preferences.</p>
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slide-in-up">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white m-0 font-display tracking-tight">
+              Settings
+            </h1>
+          </div>
+          <p className="text-slate-500 font-medium text-sm">Manage your account preferences and system configuration.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Navigation / Tab Sidebar */}
-        <div className="space-y-1">
-          <Button 
-            variant="ghost" 
-            onClick={() => setActiveTab('profile')}
-            className={`w-full justify-between ${
-              activeTab === 'profile' 
-                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white' 
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4" />
-              <span>Profile</span>
-            </div>
-            {activeTab === 'profile' && <ChevronRight className="h-4 w-4 text-slate-400" />}
-          </Button>
+      <div className="flex flex-col lg:flex-row gap-8 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
+        {/* Sidebar Tabs */}
+        <div className="w-full lg:w-64 space-y-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            // Map colors dynamically
+            const colorClass = isActive 
+              ? tab.color === 'primary' ? 'bg-primary/10 text-primary border-r-2 border-primary'
+                : tab.color === 'secondary' ? 'bg-secondary/10 text-secondary border-r-2 border-secondary'
+                : tab.color === 'amber' ? 'bg-amber-500/10 text-amber-600 border-r-2 border-amber-500'
+                : 'bg-blue-500/10 text-blue-600 border-r-2 border-blue-500'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-r-2 border-transparent';
 
-          <Button 
-            variant="ghost" 
-            onClick={() => setActiveTab('organization')}
-            className={`w-full justify-between ${
-              activeTab === 'organization' 
-                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white' 
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Building2 className="h-4 w-4" />
-              <span>Organization</span>
-            </div>
-            {activeTab === 'organization' && <ChevronRight className="h-4 w-4 text-slate-400" />}
-          </Button>
+            const iconClass = isActive
+              ? tab.color === 'primary' ? 'text-primary'
+                : tab.color === 'secondary' ? 'text-secondary'
+                : tab.color === 'amber' ? 'text-amber-600'
+                : 'text-blue-600'
+              : 'text-slate-400';
 
-          <Button 
-            variant="ghost" 
-            onClick={() => setActiveTab('security')}
-            className={`w-full justify-between ${
-              activeTab === 'security' 
-                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white' 
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="h-4 w-4" />
-              <span>Security</span>
-            </div>
-            {activeTab === 'security' && <ChevronRight className="h-4 w-4 text-slate-400" />}
-          </Button>
-
-          <Button 
-            variant="ghost" 
-            onClick={() => setActiveTab('notifications')}
-            className={`w-full justify-between ${
-              activeTab === 'notifications' 
-                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white' 
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Bell className="h-4 w-4" />
-              <span>Notifications</span>
-            </div>
-            {activeTab === 'notifications' && <ChevronRight className="h-4 w-4 text-slate-400" />}
-          </Button>
-
-          <Button 
-            variant="ghost" 
-            onClick={() => setActiveTab('billing')}
-            className={`w-full justify-between ${
-              activeTab === 'billing' 
-                ? 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold text-slate-900 dark:text-white' 
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <CreditCard className="h-4 w-4" />
-              <span>Billing</span>
-            </div>
-            {activeTab === 'billing' && <ChevronRight className="h-4 w-4 text-slate-400" />}
-          </Button>
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all duration-300 rounded-l-xl ${colorClass}`}
+              >
+                <Icon className={`h-5 w-5 transition-colors ${iconClass}`} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Tab Form Contents */}
-        <div className="md:col-span-3 space-y-6">
-          
-          {/* PROFILE TAB */}
-          {activeTab === 'profile' && (
-            <Card className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h3 className="text-lg font-bold mb-6 text-slate-900 dark:text-white">General Information</h3>
-              
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handlePhotoChange} 
-                accept="image/*" 
-                className="hidden" 
-              />
-
-              <div className="flex items-center gap-6 mb-8">
-                {/* Clickable Profile Photo circle */}
-                <div 
-                  onClick={handleTriggerUpload}
-                  className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-350 dark:border-slate-700 flex flex-col items-center justify-center text-slate-450 gap-1 overflow-hidden cursor-pointer hover:border-primary dark:hover:border-primary group relative transition-all"
-                >
-                  {profilePhoto ? (
-                    <>
-                      <img src={profilePhoto} alt="Profile" className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Upload className="h-4 w-4 text-white" />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center">
-                      <Upload className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
-                      <span className="text-[10px] group-hover:text-primary transition-colors mt-0.5 font-medium">Upload</span>
+        {/* Content Area */}
+        <div className="flex-1">
+          <Card className="overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-emerald-400" />
+            
+            {activeTab === 'profile' && (
+              <form onSubmit={handleSave} className="p-8 space-y-8 animate-scale-in">
+                <div className="flex items-center gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
+                  <div className="relative group cursor-pointer">
+                    <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-display text-3xl font-extrabold shadow-lg group-hover:scale-105 transition-transform duration-300">
+                      AK
                     </div>
-                  )}
+                    <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="h-8 w-8 text-white" />
+                    </div>
+                    <div className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-900 rounded-full p-1.5 shadow-sm">
+                      <div className="bg-emerald-500 h-4 w-4 rounded-full border-2 border-white dark:border-slate-900" />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">Arun Kumar</h2>
+                    <p className="text-sm text-slate-500 font-medium mb-3">System Administrator</p>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" variant="outline" className="h-8">Change Picture</Button>
+                      <Button type="button" size="sm" variant="ghost" className="h-8 text-red-500 hover:bg-red-50 hover:text-red-600">Remove</Button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Profile Photo</p>
-                  <p className="text-xs text-slate-500 mt-1">PNG, JPG up to 10MB</p>
-                  <div className="flex gap-2 mt-3">
-                    <Button variant="outline" size="sm" onClick={handleTriggerUpload}>Change</Button>
-                    {profilePhoto && (
-                      <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={handleRemovePhoto}>
-                        Remove
-                      </Button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input label="First Name" defaultValue="Arun" />
+                  <Input label="Last Name" defaultValue="Kumar" />
+                  <Input label="Email Address" type="email" defaultValue="admin@vanniloan.com" />
+                  <Input label="Phone Number" type="tel" defaultValue="+91 98765 43210" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 tracking-wide">
+                    Bio / Role Description
+                  </label>
+                  <textarea 
+                    className="flex min-h-[100px] w-full rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-4 py-3 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 transition-all duration-300 shadow-sm hover:shadow-md resize-none"
+                    defaultValue="Lead Administrator for VanniLoan operations in the southern region."
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <Button type="submit" isLoading={isSaving} className="shadow-glow-primary px-8">
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {activeTab === 'company' && (
+              <form onSubmit={handleSave} className="p-8 animate-scale-in space-y-8">
+                <div className="flex items-center gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
+                  <div className={`icon-3d icon-3d-${brandColor} h-16 w-16 overflow-hidden`}>
+                    {brandLogoUrl ? (
+                      <img src={brandLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-white relative z-10" />
                     )}
                   </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input 
-                    label="Full Name" 
-                    value={fullName} 
-                    onChange={(e) => setFullName(e.target.value)} 
-                  />
-                  <Input 
-                    label="Email Address" 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                  />
-                  <Input 
-                    label="Phone Number" 
-                    value={phone} 
-                    onChange={(e) => setPhone(e.target.value)} 
-                  />
-                  <Input 
-                    label="Designation" 
-                    value={designation} 
-                    onChange={(e) => setDesignation(e.target.value)} 
-                  />
-                </div>
-                
-                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <Button type="submit">Save Changes</Button>
-                </div>
-              </form>
-            </Card>
-          )}
-
-          {/* ORGANIZATION TAB */}
-          {activeTab === 'organization' && (
-            <Card className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h3 className="text-lg font-bold mb-6 text-slate-900 dark:text-white">Organization Profile</h3>
-              
-              <form onSubmit={handleSaveOrganization} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input 
-                    label="Organization Registered Name" 
-                    value={orgName} 
-                    onChange={(e) => setOrgName(e.target.value)} 
-                  />
-                  <Input 
-                    label="Registration / CIN Number" 
-                    value={regNum} 
-                    onChange={(e) => setRegNum(e.target.value)} 
-                  />
-                  <Input 
-                    label="GSTIN / Tax ID" 
-                    value={taxId} 
-                    onChange={(e) => setTaxId(e.target.value)} 
-                  />
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Primary Currency
-                    </label>
-                    <select
-                      className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option value="INR (₹)">Indian Rupee (INR - ₹)</option>
-                      <option value="USD ($)">US Dollar (USD - $)</option>
-                      <option value="EUR (€)">Euro (EUR - €)</option>
-                      <option value="GBP (£)">British Pound (GBP - £)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Official HQ Address
-                  </label>
-                  <textarea
-                    className="flex min-h-[80px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-                    value={orgAddress}
-                    onChange={(e) => setOrgAddress(e.target.value)}
-                  />
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <Button type="submit">Save Changes</Button>
-                </div>
-              </form>
-            </Card>
-          )}
-
-          {/* SECURITY TAB */}
-          {activeTab === 'security' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <Card className="p-6">
-                <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-white">Security</h3>
-                <p className="text-sm text-slate-500 mb-6">Update your password and secure your account.</p>
-                
-                <form onSubmit={handleUpdatePassword} className="space-y-4">
-                  <Input 
-                    label="Current Password" 
-                    type="password" 
-                    value={currentPassword} 
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input 
-                      label="New Password" 
-                      type="password" 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                    <Input 
-                      label="Confirm New Password" 
-                      type="password" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                    <Button type="submit">Update Password</Button>
-                  </div>
-                </form>
-              </Card>
-
-              {/* DANGER ZONE CARD */}
-              <Card className="p-6 border-red-200 dark:border-red-950/60 bg-red-50/20 dark:bg-red-950/10">
-                <div className="flex items-start gap-3">
-                  <ShieldAlert className="h-6 w-6 text-red-500 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-lg font-bold text-red-600 m-0">Danger Zone</h3>
-                    <p className="text-sm text-slate-500 mt-1 mb-6">
-                      Once you deactivate or delete your administration profile, all associated organization loan history will be frozen. Please proceed with extreme caution.
-                    </p>
-                    <Button variant="danger" size="sm" onClick={handleDeactivateAccount}>Deactivate Account</Button>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-display">System Branding</h2>
+                    <p className="text-slate-500 font-medium text-sm">Customize the platform name and primary logo color to match your brand.</p>
                   </div>
                 </div>
-              </Card>
-            </div>
-          )}
+                
+                <div className="space-y-6 max-w-xl">
+                  <Input 
+                    label="System Name" 
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="e.g. VanniLoan" 
+                  />
 
-          {/* NOTIFICATIONS TAB */}
-          {activeTab === 'notifications' && (
-            <Card className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-white">Notification Preferences</h3>
-              <p className="text-sm text-slate-500 mb-6">Configure how and when you receive automated portfolio and transaction alerts.</p>
-              
-              <form onSubmit={handleSaveNotifications} className="space-y-6">
-                <div className="space-y-4">
-                  {/* Option 1 */}
-                  <div className="flex items-start justify-between p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div className="space-y-0.5">
-                      <label className="text-sm font-semibold text-slate-900 dark:text-white">New Loan Creation Alerts</label>
-                      <p className="text-xs text-slate-500">Receive instant email receipts when any new agreement is successfully drafted.</p>
-                    </div>
-                    <input 
-                      type="checkbox" 
-                      checked={notifyNewLoan}
-                      onChange={(e) => setNotifyNewLoan(e.target.checked)}
-                      className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary" 
+                  <div className="space-y-3">
+                    <Input 
+                      label="Logo Image URL (Optional)" 
+                      value={brandLogoUrl}
+                      onChange={(e) => setBrandLogoUrl(e.target.value)}
+                      placeholder="https://example.com/logo.png" 
                     />
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">OR</span>
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                    </div>
+                    <div>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleLogoUpload}
+                        className="hidden" 
+                        id="logo-upload"
+                      />
+                      <label 
+                        htmlFor="logo-upload"
+                        className="flex items-center justify-center gap-2 w-full h-11 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Upload Logo Image (Max 2MB)
+                      </label>
+                    </div>
                   </div>
 
-                  {/* Option 2 */}
-                  <div className="flex items-start justify-between p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div className="space-y-0.5">
-                      <label className="text-sm font-semibold text-slate-900 dark:text-white">Repayment EMI Reminders</label>
-                      <p className="text-xs text-slate-500">Email system reports for collected deposits or pending collection schedules.</p>
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 tracking-wide">
+                      Logo Color Theme
+                    </label>
+                    <div className="flex flex-wrap gap-4">
+                      {[
+                        { id: 'primary', label: 'Emerald' },
+                        { id: 'secondary', label: 'Indigo' },
+                        { id: 'amber', label: 'Amber' },
+                        { id: 'blue', label: 'Blue' },
+                        { id: 'red', label: 'Red' }
+                      ].map(color => (
+                        <button
+                          key={color.id}
+                          type="button"
+                          onClick={() => setBrandColor(color.id)}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition-all duration-300 ${
+                            brandColor === color.id 
+                              ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                              : 'border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600'
+                          }`}
+                        >
+                          <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-inner ${
+                            color.id === 'primary' ? 'from-emerald-400 to-emerald-600' :
+                            color.id === 'secondary' ? 'from-indigo-400 to-indigo-600' :
+                            color.id === 'amber' ? 'from-amber-400 to-amber-600' :
+                            color.id === 'blue' ? 'from-blue-400 to-blue-600' :
+                            'from-red-400 to-red-600'
+                          }`} />
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{color.label}</span>
+                        </button>
+                      ))}
                     </div>
-                    <input 
-                      type="checkbox" 
-                      checked={notifyRepayment}
-                      onChange={(e) => setNotifyRepayment(e.target.checked)}
-                      className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary" 
-                    />
-                  </div>
-
-                  {/* Option 3 */}
-                  <div className="flex items-start justify-between p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div className="space-y-0.5">
-                      <label className="text-sm font-semibold text-slate-900 dark:text-white">SMS Collection Receipts</label>
-                      <p className="text-xs text-slate-500">Send transactional text updates directly to borrowers upon recording deposits.</p>
-                    </div>
-                    <input 
-                      type="checkbox" 
-                      checked={smsAlerts}
-                      onChange={(e) => setSmsAlerts(e.target.checked)}
-                      className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary" 
-                    />
-                  </div>
-
-                  {/* Option 4 */}
-                  <div className="flex items-start justify-between p-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div className="space-y-0.5">
-                      <label className="text-sm font-semibold text-slate-900 dark:text-white">Weekly Performance Digest</label>
-                      <p className="text-xs text-slate-500">A structured spreadsheet layout detailing outstanding portfolio metrics and YTD earnings.</p>
-                    </div>
-                    <input 
-                      type="checkbox" 
-                      checked={weeklyDigest}
-                      onChange={(e) => setWeeklyDigest(e.target.checked)}
-                      className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary" 
-                    />
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <Button type="submit">Save Preferences</Button>
+                <div className="pt-6 flex justify-end">
+                  <Button type="submit" isLoading={isSaving} className="shadow-glow-primary px-8">
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Branding
+                  </Button>
                 </div>
               </form>
-            </Card>
-          )}
+            )}
 
-          {/* BILLING TAB */}
-          {activeTab === 'billing' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              
-              {/* CURRENT SUBSCRIPTION CARD */}
-              <Card className="p-6 border-l-4 border-l-primary bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <Badge variant="success" className="mb-1">Active Plan</Badge>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white m-0">Professional SaaS Dashboard</h3>
-                    <p className="text-sm text-slate-500">Billed monthly via registered Visa Card (**** 4242).</p>
-                  </div>
-                  <div className="text-left md:text-right shrink-0">
-                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white">₹4,999</span>
-                    <span className="text-xs text-slate-500 block mt-0.5">Renews on June 1, 2026</span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* INVOICE HISTORY TABLE */}
-              <Card className="overflow-hidden">
-                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white m-0">Past Invoice Statements</h3>
-                  <Badge variant="neutral">YTD History</Badge>
+            {activeTab === 'notifications' && (
+              <form onSubmit={handleSave} className="p-8 space-y-6 animate-scale-in">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display border-b border-slate-100 dark:border-slate-800 pb-4">Email Notifications</h2>
+                
+                <div className="space-y-4">
+                  {[
+                    { title: 'Daily Collection Summary', desc: 'Receive a daily report of all EMI collections.' },
+                    { title: 'Overdue Alerts', desc: 'Get notified immediately when a loan becomes overdue.' },
+                    { title: 'New Loan Disbursed', desc: 'Alert when a new loan agreement is activated.' },
+                    { title: 'System Updates', desc: 'Important notices about platform maintenance.' }
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">{item.title}</p>
+                        <p className="text-sm text-slate-500">{item.desc}</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" defaultChecked={i < 2} />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-500 shadow-inner"></div>
+                      </label>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50/20 dark:bg-slate-900/10 border-b border-slate-100 dark:border-slate-800">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice ID</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Billing Date</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Status</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                      <tr>
-                        <td className="px-6 py-4 font-mono font-medium text-slate-600 dark:text-slate-400">INV-2026-005</td>
-                        <td className="px-6 py-4 text-slate-700 dark:text-slate-300">May 1, 2026</td>
-                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">₹4,999</td>
-                        <td className="px-6 py-4"><Badge variant="success">PAID</Badge></td>
-                        <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => toast.success('Downloading Invoice INV-2026-005 PDF...')}>
-                            <Download className="h-4 w-4 text-slate-400" />
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 font-mono font-medium text-slate-600 dark:text-slate-400">INV-2026-004</td>
-                        <td className="px-6 py-4 text-slate-700 dark:text-slate-300">Apr 1, 2026</td>
-                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">₹4,999</td>
-                        <td className="px-6 py-4"><Badge variant="success">PAID</Badge></td>
-                        <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => toast.success('Downloading Invoice INV-2026-004 PDF...')}>
-                            <Download className="h-4 w-4 text-slate-400" />
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 font-mono font-medium text-slate-600 dark:text-slate-400">INV-2026-003</td>
-                        <td className="px-6 py-4 text-slate-700 dark:text-slate-300">Mar 1, 2026</td>
-                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">₹4,999</td>
-                        <td className="px-6 py-4"><Badge variant="success">PAID</Badge></td>
-                        <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => toast.success('Downloading Invoice INV-2026-003 PDF...')}>
-                            <Download className="h-4 w-4 text-slate-400" />
-                          </Button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="pt-6 flex justify-end">
+                  <Button type="submit" isLoading={isSaving} className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 shadow-glow-amber">
+                    Save Preferences
+                  </Button>
                 </div>
-              </Card>
+              </form>
+            )}
 
-            </div>
-          )}
-
+            {(activeTab === 'security' || activeTab === 'appearance') && (
+              <div className="p-8 flex flex-col items-center justify-center text-center min-h-[400px] animate-scale-in">
+                <div className={`icon-3d h-20 w-20 mb-6 ${activeTab === 'security' ? 'icon-3d-blue' : 'icon-3d-primary'}`}>
+                  {activeTab === 'security' ? 
+                    <Shield className="h-10 w-10 text-white relative z-10" /> : 
+                    <Palette className="h-10 w-10 text-white relative z-10" />
+                  }
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-display mb-2">
+                  {activeTab === 'security' ? 'Security Settings' : 'Appearance Settings'}
+                </h2>
+                <p className="text-slate-500 max-w-md">
+                  This section is currently under development. Advanced 3D customization options will be available soon.
+                </p>
+              </div>
+            )}
+          </Card>
         </div>
       </div>
     </div>
