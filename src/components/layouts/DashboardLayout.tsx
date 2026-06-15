@@ -1,12 +1,14 @@
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../organisms/Sidebar';
 import { Bell, Search } from 'lucide-react';
 import { Button } from '../atoms/Button';
 import { Toaster } from 'sonner';
 
 export const DashboardLayout: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       <Toaster position="top-right" richColors />
@@ -27,7 +29,12 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => navigate('/notifications')}
+            >
               <Bell className="h-5 w-5 text-slate-500" />
               <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
             </Button>
