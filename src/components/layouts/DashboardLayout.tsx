@@ -2,58 +2,101 @@
 import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../organisms/Sidebar';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, Sparkles, Menu } from 'lucide-react';
 import { Button } from '../atoms/Button';
 import { Toaster } from 'sonner';
+import { ThemeToggle } from '../atoms/ThemeToggle';
+import { useBranding } from '../../contexts/BrandingContext';
 
 export const DashboardLayout: React.FC = () => {
-  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const { systemName } = useBranding();
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-screen mesh-gradient" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)' }}>
       <Toaster position="top-right" richColors />
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-16 border-b border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 flex items-center justify-between px-8">
+        {/* Header with glassmorphism */}
+        <header className="h-16 border-b backdrop-blur-xl flex items-center justify-between px-4 md:px-8 relative z-30" style={{ backgroundColor: 'var(--color-header-bg)', borderColor: 'var(--color-divider)' }}>
+          {/* Subtle gradient line on top */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          
+          <div className="flex items-center gap-3 md:hidden">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setMobileOpen(true)}
+              className="hover:bg-primary/5 hover:text-primary transition-all duration-300"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="font-bold font-display" style={{ color: 'var(--color-heading)' }}>{systemName}</span>
+          </div>
+
           <div className="w-96 hidden md:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 group-focus-within:text-primary transition-colors duration-300" style={{ color: 'var(--color-faint)' }} />
               <input 
                 type="text" 
                 placeholder="Search anything..." 
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 border-none focus:ring-2 focus:ring-primary/20 text-sm dark:bg-slate-800 dark:text-slate-200"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all duration-300 backdrop-blur-sm"
+                style={{
+                  backgroundColor: 'var(--color-input-bg)',
+                  borderColor: 'var(--color-divider)',
+                  color: 'var(--color-foreground)',
+                }}
               />
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={() => navigate('/notifications')}
-            >
-              <Bell className="h-5 w-5 text-slate-500" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+            <ThemeToggle />
+
+            {/* Premium badge */}
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-200/50">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-bold text-amber-600">PRO</span>
+            </div>
+
+            <Button variant="ghost" size="icon" className="relative hover:bg-primary/5">
+              <Bell className="h-5 w-5" style={{ color: 'var(--color-subtle)' }} />
+              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-red-500 rounded-full border-2 animate-pulse" style={{ borderColor: 'var(--color-surface)' }}></span>
             </Button>
-            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>
-            <div className="flex items-center gap-3">
+            
+            <div className="h-8 w-[1px] mx-1" style={{ background: 'linear-gradient(to bottom, transparent, var(--color-divider), transparent)' }}></div>
+            
+            <div className="flex items-center gap-2 md:gap-3 group cursor-pointer ml-2 md:ml-0">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Arun Kumar</p>
-                <p className="text-xs text-slate-500">Administrator</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--color-heading)' }}>Arun Kumar</p>
+                <p className="text-[11px] font-medium" style={{ color: 'var(--color-subtle)' }}>Administrator</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-600 font-bold dark:bg-indigo-900/30 dark:border-indigo-800">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105">
                 AK
               </div>
             </div>
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <Outlet />
+        {/* Content with 3D animated moving background */}
+        <main className="flex-1 overflow-y-auto p-8 relative">
+          {/* 3D Animated Background Orbs */}
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] animate-morph-blob opacity-70" />
+            <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-secondary/20 rounded-full blur-[120px] animate-morph-blob opacity-70" style={{ animationDelay: '2s', animationDuration: '12s' }} />
+            <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-amber-500/10 rounded-full blur-[150px] animate-morph-blob opacity-50" style={{ animationDelay: '4s', animationDuration: '15s' }} />
+            
+            {/* Overlay Grid for depth */}
+            <div className="absolute inset-0 opacity-[0.02]" style={{
+              backgroundImage: `linear-gradient(rgba(0,0,0,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.5) 1px, transparent 1px)`,
+              backgroundSize: '40px 40px'
+            }} />
+          </div>
+
+          <div className="relative z-10">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

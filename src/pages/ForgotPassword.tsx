@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from '../components/atoms/Input';
 import { Button } from '../components/atoms/Button';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Mail } from 'lucide-react';
 
 const ForgotPassword: React.FC = () => {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
@@ -15,19 +14,20 @@ const ForgotPassword: React.FC = () => {
 
   if (isSubmitted) {
     return (
-      <div className="space-y-6 animate-in fade-in duration-500 text-center">
-        <div className="mx-auto h-16 w-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 mb-6">
-          <Send className="h-8 w-8" />
+      <div className="space-y-6 animate-scale-in text-center relative z-10">
+        <div className="mx-auto h-20 w-20 bg-gradient-to-br from-emerald-400 to-primary rounded-full flex items-center justify-center text-white mb-8 shadow-glow-primary animate-pulse-3d">
+          <Send className="h-10 w-10 relative z-10 -ml-1 mt-1" />
         </div>
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Check your email</h2>
-        <p className="text-slate-500">
-          We've sent a password reset link to <span className="font-semibold text-slate-900 dark:text-white">arun@example.com</span>
+        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight">Check your email</h2>
+        <p className="text-slate-500 font-medium">
+          We've sent a secure password reset link to<br/>
+          <span className="font-bold text-slate-900 dark:text-white text-lg mt-2 inline-block">arun@example.com</span>
         </p>
-        <div className="pt-6">
+        <div className="pt-8">
           <Link to="/login">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full h-12 hover:-translate-y-1">
               <ArrowLeft className="h-4 w-4" />
-              Back to login
+              Return to Login
             </Button>
           </Link>
         </div>
@@ -36,28 +36,36 @@ const ForgotPassword: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Reset password</h2>
-        <p className="text-slate-500">Enter your email and we'll send you a link to reset your password.</p>
+    <div className="space-y-8 animate-slide-in-up relative z-10">
+      <div className="space-y-2 text-center md:text-left">
+        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight">Reset password</h2>
+        <p className="text-slate-500 font-medium">Enter your email and we'll send you a secure link to reset your password.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input 
-          label="Email Address" 
-          placeholder="name@company.com" 
-          type="email" 
-          required 
-        />
-        <Button type="submit" className="w-full">
-          Send reset link
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2 group">
+          <Input 
+            label="Registered Email Address" 
+            placeholder="name@company.com" 
+            type="email" 
+            required 
+            className="pl-10 h-12 text-base"
+          />
+          <Mail className="absolute left-3 top-10 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+        </div>
+        
+        <Button type="submit" className="w-full h-12 text-base font-bold shadow-glow-primary hover:-translate-y-1">
+          Send Recovery Link
+          <Send className="h-4 w-4 ml-1" />
         </Button>
       </form>
 
-      <div className="text-center">
-        <Link to="/login" className="text-sm text-slate-500 hover:text-primary flex items-center justify-center gap-2 transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-          Back to login
+      <div className="text-center pt-4">
+        <Link to="/login" className="text-sm font-bold text-slate-500 hover:text-primary flex items-center justify-center gap-2 transition-colors group">
+          <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+          </div>
+          Back to secure login
         </Link>
       </div>
     </div>

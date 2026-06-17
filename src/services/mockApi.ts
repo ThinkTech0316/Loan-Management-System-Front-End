@@ -1,4 +1,4 @@
-import type { Borrower, Loan, Repayment, DashboardStats, CollectionData } from '../types';
+import type { Borrower, Loan, Repayment, DashboardStats, CollectionData, FixedDeposit, FDEarning } from '../types';
 
 export interface Installment {
   installmentNumber: number;
@@ -33,6 +33,8 @@ export const initialStats: DashboardStats = {
   totalCollected: 9700,
   overdueCount: 0,
   monthlyGrowth: 15.4,
+  totalActiveFDs: 2,
+  totalDeposits: 1500000,
 };
 
 export const initialCollectionData: CollectionData[] = [
@@ -49,8 +51,10 @@ export const initialBorrowers: Borrower[] = [
     id: '1',
     name: 'Anjali Kumar',
     email: 'anjali@example.com',
-    phone: '+91 98765 43210',
-    address: 'Chennai, Tamil Nadu',
+    phone: '+94 77 123 4567',
+    nic: '199012345678',
+    district: 'Yogapuram',
+    address: 'Main Road, Yogapuram',
     status: 'active',
     createdAt: '2023-10-15',
   },
@@ -58,8 +62,10 @@ export const initialBorrowers: Borrower[] = [
     id: '2',
     name: 'Rajesh Raman',
     email: 'rajesh@example.com',
-    phone: '+91 98765 43211',
-    address: 'Coimbatore, Tamil Nadu',
+    phone: '+94 71 987 6543',
+    nic: '881234567V',
+    district: 'Anichchayankullam',
+    address: 'Temple Road, Anichchayankullam',
     status: 'active',
     createdAt: '2023-11-20',
   },
@@ -67,8 +73,10 @@ export const initialBorrowers: Borrower[] = [
     id: '3',
     name: 'Priya Mani',
     email: 'priya@example.com',
-    phone: '+91 98765 43212',
-    address: 'Madurai, Tamil Nadu',
+    phone: '+94 76 555 4321',
+    nic: '951234567V',
+    district: 'Vadakaadu',
+    address: 'School Lane, Vadakaadu',
     status: 'inactive',
     createdAt: '2023-09-05',
   },
@@ -108,7 +116,7 @@ export const initialRepayments: Repayment[] = [
     amount: 4500,
     date: '2024-05-10',
     status: 'paid',
-    method: 'upi',
+    method: 'mobile_wallet',
   },
   {
     id: 'R2002',
@@ -120,14 +128,45 @@ export const initialRepayments: Repayment[] = [
   },
 ];
 
+export const initialFixedDeposits: FixedDeposit[] = [
+  {
+    id: 'FD3001',
+    borrowerId: '1',
+    borrowerName: 'Anjali Kumar',
+    principalAmount: 500000,
+    interestRate: 8.5,
+    durationMonths: 12,
+    startDate: '2024-01-15',
+    maturityDate: '2025-01-15',
+    maturityAmount: 542500,
+    status: 'active',
+  },
+  {
+    id: 'FD3002',
+    borrowerId: '2',
+    borrowerName: 'Rajesh Raman',
+    principalAmount: 1000000,
+    interestRate: 9.0,
+    durationMonths: 24,
+    startDate: '2023-06-01',
+    maturityDate: '2025-06-01',
+    maturityAmount: 1180000,
+    status: 'active',
+  }
+];
+
 export const getStats = (): DashboardStats => {
-  const loans = getLocalStorage<Loan[]>('vl_loans', initialLoans);
-  const repayments = getLocalStorage<Repayment[]>('vl_repayments', initialRepayments);
+  const loans = getLocalStorage<Loan[]>('vl_loans_v2', initialLoans);
+  const repayments = getLocalStorage<Repayment[]>('vl_repayments_v2', initialRepayments);
+  const fds = getLocalStorage<FixedDeposit[]>('vl_fixed_deposits_v2', initialFixedDeposits);
   
   const totalActiveLoans = loans.filter(l => l.status === 'active').length;
   const totalOutstanding = loans.reduce((sum, l) => l.status !== 'completed' ? sum + l.remainingBalance : sum, 0);
   const totalCollected = repayments.filter(r => r.status === 'paid').reduce((sum, r) => sum + r.amount, 0);
   const overdueCount = loans.filter(l => l.status === 'overdue').length;
+
+  const totalActiveFDs = fds.filter(fd => fd.status === 'active').length;
+  const totalDeposits = fds.reduce((sum, fd) => sum + fd.principalAmount, 0);
   
   return {
     totalActiveLoans,
@@ -135,18 +174,54 @@ export const getStats = (): DashboardStats => {
     totalCollected,
     overdueCount,
     monthlyGrowth: 15.4,
+    totalActiveFDs,
+    totalDeposits,
   };
 };
 
 export const apiService = {
   getStats: () => Promise.resolve(getStats()),
-  getCollectionData: () => Promise.resolve(getLocalStorage<CollectionData[]>('vl_collectionData', initialCollectionData)),
-  getBorrowers: () => Promise.resolve(getLocalStorage<Borrower[]>('vl_borrowers', initialBorrowers)),
-  getLoans: () => Promise.resolve(getLocalStorage<Loan[]>('vl_loans', initialLoans)),
-  getRepayments: () => Promise.resolve(getLocalStorage<Repayment[]>('vl_repayments', initialRepayments)),
+  getCollectionData: () => Promise.resolve(getLocalStorage<CollectionData[]>('vl_collectionData_v2', initialCollectionData)),
+  getBorrowers: () => {
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
+    return Promise.resolve(borrowers.filter(b => !b.isDeleted));
+  },
+  getDeletedBorrowers: () => {
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
+    return Promise.resolve(borrowers.filter(b => b.isDeleted));
+  },
+  deleteBorrower: (id: string) => {
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
+    const index = borrowers.findIndex(b => b.id === id);
+    if (index !== -1) {
+      borrowers[index].isDeleted = true;
+      setLocalStorage('vl_borrowers_v2', borrowers);
+      return Promise.resolve(true);
+    }
+    return Promise.resolve(false);
+  },
+  restoreBorrower: (id: string) => {
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
+    const index = borrowers.findIndex(b => b.id === id);
+    if (index !== -1) {
+      borrowers[index].isDeleted = false;
+      setLocalStorage('vl_borrowers_v2', borrowers);
+      return Promise.resolve(true);
+    }
+    return Promise.resolve(false);
+  },
+  permanentlyDeleteBorrower: (id: string) => {
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
+    const filtered = borrowers.filter(b => b.id !== id);
+    setLocalStorage('vl_borrowers_v2', filtered);
+    return Promise.resolve(true);
+  },
+  getLoans: () => Promise.resolve(getLocalStorage<Loan[]>('vl_loans_v2', initialLoans)),
+  getRepayments: () => Promise.resolve(getLocalStorage<Repayment[]>('vl_repayments_v2', initialRepayments)),
+  getFixedDeposits: () => Promise.resolve(getLocalStorage<FixedDeposit[]>('vl_fixed_deposits_v2', initialFixedDeposits)),
   
   addBorrower: (borrower: Omit<Borrower, 'id' | 'createdAt' | 'status'>) => {
-    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers', initialBorrowers);
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
     const newBorrower: Borrower = {
       ...borrower,
       id: String(borrowers.length + 1),
@@ -154,13 +229,13 @@ export const apiService = {
       status: 'active'
     };
     borrowers.unshift(newBorrower);
-    setLocalStorage('vl_borrowers', borrowers);
+    setLocalStorage('vl_borrowers_v2', borrowers);
     return Promise.resolve(newBorrower);
   },
   
   createLoan: (loanData: Omit<Loan, 'id' | 'remainingBalance' | 'status' | 'borrowerName'>) => {
-    const loans = getLocalStorage<Loan[]>('vl_loans', initialLoans);
-    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers', initialBorrowers);
+    const loans = getLocalStorage<Loan[]>('vl_loans_v2', initialLoans);
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
     
     const borrower = borrowers.find(b => b.id === loanData.borrowerId);
     const borrowerName = borrower ? borrower.name : 'Unknown Borrower';
@@ -174,7 +249,7 @@ export const apiService = {
       status: 'active'
     };
     loans.unshift(newLoan);
-    setLocalStorage('vl_loans', loans);
+    setLocalStorage('vl_loans_v2', loans);
     
     // Trigger side effect for stats
     getStats();
@@ -182,9 +257,34 @@ export const apiService = {
     return Promise.resolve(newLoan);
   },
   
+  createFixedDeposit: (fdData: Omit<FixedDeposit, 'id' | 'maturityAmount' | 'status' | 'borrowerName'>) => {
+    const fds = getLocalStorage<FixedDeposit[]>('vl_fixed_deposits_v2', initialFixedDeposits);
+    const borrowers = getLocalStorage<Borrower[]>('vl_borrowers_v2', initialBorrowers);
+    
+    const borrower = borrowers.find(b => b.id === fdData.borrowerId);
+    const borrowerName = borrower ? borrower.name : 'Unknown Borrower';
+    
+    const newId = `FD${3000 + fds.length + 1}`;
+    
+    // Calculate simple interest maturity amount
+    const maturityAmount = fdData.principalAmount + (fdData.principalAmount * (fdData.interestRate / 100) * (fdData.durationMonths / 12));
+    
+    const newFD: FixedDeposit = {
+      ...fdData,
+      borrowerName,
+      id: newId,
+      maturityAmount: Math.round(maturityAmount),
+      status: 'active'
+    };
+    fds.unshift(newFD);
+    setLocalStorage('vl_fixed_deposits_v2', fds);
+    
+    return Promise.resolve(newFD);
+  },
+  
   recordRepayment: (repaymentData: Omit<Repayment, 'id' | 'status'>) => {
-    const repayments = getLocalStorage<Repayment[]>('vl_repayments', initialRepayments);
-    const loans = getLocalStorage<Loan[]>('vl_loans', initialLoans);
+    const repayments = getLocalStorage<Repayment[]>('vl_repayments_v2', initialRepayments);
+    const loans = getLocalStorage<Loan[]>('vl_loans_v2', initialLoans);
     
     const newId = `R${2000 + repayments.length + 1}`;
     const newRepayment: Repayment = {
@@ -202,14 +302,14 @@ export const apiService = {
         loan.status = 'completed';
       }
       loans[loanIndex] = loan;
-      setLocalStorage('vl_loans', loans);
+      setLocalStorage('vl_loans_v2', loans);
     }
     
     repayments.unshift(newRepayment);
-    setLocalStorage('vl_repayments', repayments);
+    setLocalStorage('vl_repayments_v2', repayments);
     
     // Update chart
-    const collectionData = getLocalStorage<CollectionData[]>('vl_collectionData', initialCollectionData);
+    const collectionData = getLocalStorage<CollectionData[]>('vl_collectionData_v2', initialCollectionData);
     const date = new Date(repaymentData.date);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthName = months[date.getMonth()];
@@ -224,14 +324,55 @@ export const apiService = {
         actual: repaymentData.amount
       });
     }
-    setLocalStorage('vl_collectionData', collectionData);
+    setLocalStorage('vl_collectionData_v2', collectionData);
     
     return Promise.resolve(newRepayment);
   },
   
+  deleteRepayment: (repaymentId: string) => {
+    const repayments = getLocalStorage<Repayment[]>('vl_repayments_v2', initialRepayments);
+    const loans = getLocalStorage<Loan[]>('vl_loans_v2', initialLoans);
+    
+    const repaymentIndex = repayments.findIndex(r => r.id === repaymentId);
+    if (repaymentIndex === -1) return Promise.resolve(false);
+    
+    const repayment = repayments[repaymentIndex];
+    
+    // Add remaining balance back to loan
+    const loanIndex = loans.findIndex(l => l.id === repayment.loanId);
+    if (loanIndex !== -1) {
+      const loan = loans[loanIndex];
+      loan.remainingBalance += repayment.amount;
+      if (loan.status === 'completed' && loan.remainingBalance > 0) {
+        loan.status = 'active'; // Or overdue if applicable
+      }
+      loans[loanIndex] = loan;
+      setLocalStorage('vl_loans_v2', loans);
+    }
+    
+    // Remove from array
+    repayments.splice(repaymentIndex, 1);
+    setLocalStorage('vl_repayments_v2', repayments);
+    
+    // Optional: Reverse chart stats
+    const collectionData = getLocalStorage<CollectionData[]>('vl_collectionData_v2', initialCollectionData);
+    const date = new Date(repayment.date);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthName = months[date.getMonth()];
+    
+    const monthIndex = collectionData.findIndex(c => c.month === monthName);
+    if (monthIndex !== -1) {
+      collectionData[monthIndex].actual -= repayment.amount;
+      setLocalStorage('vl_collectionData_v2', collectionData);
+    }
+    
+    // Trigger global update if needed, or simply let component re-fetch
+    return Promise.resolve(true);
+  },
+  
   getRepaymentSchedule: (loanId: string): Promise<Installment[]> => {
-    const loans = getLocalStorage<Loan[]>('vl_loans', initialLoans);
-    const repayments = getLocalStorage<Repayment[]>('vl_repayments', initialRepayments);
+    const loans = getLocalStorage<Loan[]>('vl_loans_v2', initialLoans);
+    const repayments = getLocalStorage<Repayment[]>('vl_repayments_v2', initialRepayments);
     
     const loan = loans.find(l => l.id === loanId);
     if (!loan) return Promise.resolve([]);
@@ -283,5 +424,39 @@ export const apiService = {
     }
     
     return Promise.resolve(schedule);
+  },
+
+  getFDEarningsSchedule: (fdId: string): Promise<FDEarning[]> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const fds = getLocalStorage<FixedDeposit[]>('vl_fixed_deposits_v2', initialFixedDeposits);
+        const fd = fds.find(f => f.id === fdId);
+        
+        if (!fd) {
+          resolve([]);
+          return;
+        }
+
+        const schedule: FDEarning[] = [];
+        const monthlyInterestRate = fd.interestRate / 100 / 12;
+        let accruedInterest = 0;
+        let currentDate = new Date(fd.startDate);
+
+        for (let i = 1; i <= fd.durationMonths; i++) {
+          const monthlyInterest = fd.principalAmount * monthlyInterestRate;
+          accruedInterest += monthlyInterest;
+          currentDate.setMonth(currentDate.getMonth() + 1);
+
+          schedule.push({
+            month: i,
+            date: currentDate.toISOString().split('T')[0],
+            accruedInterest: Math.round(accruedInterest),
+            totalValue: Math.round(fd.principalAmount + accruedInterest)
+          });
+        }
+
+        resolve(schedule);
+      }, 400);
+    });
   }
 };

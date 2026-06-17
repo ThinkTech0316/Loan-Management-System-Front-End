@@ -5,9 +5,12 @@ export interface Borrower {
   email: string;
   phone: string;
   address: string;
+  district: string;
+  nic: string;
   status: 'active' | 'inactive';
   createdAt: string;
   avatar?: string;
+  isDeleted?: boolean;
 }
 
 export interface Loan {
@@ -29,7 +32,21 @@ export interface Repayment {
   amount: number;
   date: string;
   status: 'paid' | 'pending' | 'failed';
-  method: 'cash' | 'bank_transfer' | 'upi';
+  method: 'cash' | 'bank_transfer' | 'mobile_wallet';
+  reference?: string;
+}
+
+export interface FixedDeposit {
+  id: string;
+  borrowerId: string;
+  borrowerName: string;
+  principalAmount: number;
+  interestRate: number;
+  durationMonths: number;
+  startDate: string;
+  maturityDate: string;
+  maturityAmount: number;
+  status: 'active' | 'matured' | 'withdrawn';
 }
 
 export interface DashboardStats {
@@ -38,10 +55,19 @@ export interface DashboardStats {
   totalCollected: number;
   overdueCount: number;
   monthlyGrowth: number;
+  totalActiveFDs: number;
+  totalDeposits: number;
 }
 
 export interface CollectionData {
   month: string;
   expected: number;
   actual: number;
+}
+
+export interface FDEarning {
+  month: number;
+  date: string;
+  accruedInterest: number;
+  totalValue: number;
 }
