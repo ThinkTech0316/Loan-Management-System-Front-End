@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../organisms/Sidebar';
 import { Bell, Search, Sparkles, Menu } from 'lucide-react';
 import { Button } from '../atoms/Button';
