@@ -1,16 +1,39 @@
 
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../organisms/Sidebar';
-import { Bell, Search, Sparkles, Menu } from 'lucide-react';
+import { Bell, Search, Sparkles, Menu, LogOut } from 'lucide-react';
 import { Button } from '../atoms/Button';
 import { Toaster } from 'sonner';
 import { ThemeToggle } from '../atoms/ThemeToggle';
 import { useBranding } from '../../contexts/BrandingContext';
+import { apiService } from '../../services/mockApi';
 
 export const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const { systemName } = useBranding();
+  const [profilePhoto, setProfilePhoto] = React.useState<string | null>(null);
+  const [profileName, setProfileName] = React.useState('Admin');
+
+  const [showUserMenu, setShowUserMenu] = React.useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    window.location.href = '/login';
+  };
+
+  React.useEffect(() => {
+    apiService.getSetting('profile').then((data: any) => {
+      if (data?.profilePhoto) setProfilePhoto(data.profilePhoto);
+      const name = [data?.firstName, data?.lastName].filter(Boolean).join(' ');
+      if (name) setProfileName(name);
+    }).catch(() => {});
+  }, []);
+
+  const initials = React.useMemo(() => {
+    return profileName.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) || 'A';
+  }, [profileName]);
 
   return (
     <div className="flex h-screen mesh-gradient" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)' }}>
@@ -67,14 +90,34 @@ export const DashboardLayout: React.FC = () => {
             
             <div className="h-8 w-[1px] mx-1" style={{ background: 'linear-gradient(to bottom, transparent, var(--color-divider), transparent)' }}></div>
             
-            <div className="flex items-center gap-2 md:gap-3 group cursor-pointer ml-2 md:ml-0">
+            <div className="flex items-center gap-2 md:gap-3 group cursor-pointer ml-2 md:ml-0 relative">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold" style={{ color: 'var(--color-heading)' }}>Arun Kumar</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--color-heading)' }}>{profileName}</p>
                 <p className="text-[11px] font-medium" style={{ color: 'var(--color-subtle)' }}>Administrator</p>
               </div>
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105">
-                AK
+              <div onClick={() => setShowUserMenu(!showUserMenu)}>
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt={profileName} className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105 cursor-pointer" />
+                ) : (
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105 cursor-pointer">
+                    {initials}
+                  </div>
+                )}
               </div>
+              {showUserMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                  <div className="absolute right-0 top-12 z-50 w-48 rounded-xl border shadow-xl py-2 animate-scale-in" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-divider)' }}>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

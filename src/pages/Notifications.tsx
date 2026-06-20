@@ -11,53 +11,56 @@ import {
   Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiService, type Notification } from '../services/mockApi';
 
 const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = React.useState([
-    {
-      id: '1',
-      title: 'EMI Payment Received',
-      message: '₹4,500 received from Rajesh Kumar for Loan #LN001',
-      type: 'success',
-      time: '10 mins ago',
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'Loan Overdue Alert',
-      message: 'Suresh Menon missed the EMI payment for LN003 due yesterday.',
-      type: 'error',
-      time: '2 hours ago',
-      read: false,
-    },
-    {
-      id: '3',
-      title: 'New Loan Disbursed',
-      message: '₹50,000 has been disbursed to Priya Sharma.',
-      type: 'info',
-      time: '1 day ago',
-      read: true,
-    },
-    {
-      id: '4',
-      title: 'System Maintenance',
-      message: 'Scheduled maintenance this Sunday from 2 AM to 4 AM.',
-      type: 'warning',
-      time: '2 days ago',
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const fetchNotifications = React.useCallback(async () => {
+    try {
+      const data = await apiService.getNotifications();
+      setNotifications(data);
+    } catch (err) {
+      toast.error('Failed to load notifications');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-    toast.success('All notifications marked as read');
+  const markAllAsRead = async () => {
+    try {
+      await apiService.markAllNotificationsRead();
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      toast.success('All notifications marked as read');
+    } catch (err) {
+      toast.error('Failed to mark all as read');
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-    toast.success('Notification removed');
+  const markOneAsRead = async (id: string) => {
+    try {
+      await apiService.markNotificationRead(id);
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (err) {
+      toast.error('Failed to mark notification as read');
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await apiService.deleteNotification(id);
+      setNotifications(notifications.filter(n => n.id !== id));
+      toast.success('Notification removed');
+    } catch (err) {
+      toast.error('Failed to remove notification');
+    }
   };
 
   const getIcon = (type: string) => {
@@ -76,6 +79,20 @@ const Notifications: React.FC = () => {
       case 'warning': return 'bg-amber-100 dark:bg-amber-500/20';
       default: return 'bg-blue-100 dark:bg-blue-500/20';
     }
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
   };
 
   return (
@@ -134,7 +151,7 @@ const Notifications: React.FC = () => {
                       {notification.title}
                     </h4>
                     <span className="text-xs font-bold text-slate-400 whitespace-nowrap">
-                      {notification.time}
+                      {formatTimeAgo(notification.createdAt)}
                     </span>
                   </div>
                   <p className={`text-sm ${!notification.read ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-500'}`}>
@@ -144,7 +161,11 @@ const Notifications: React.FC = () => {
                 
                 <div className="flex flex-col items-end justify-between ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   {!notification.read && (
-                    <div className="h-2.5 w-2.5 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                    <button
+                      onClick={() => markOneAsRead(notification.id)}
+                      className="h-2.5 w-2.5 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)] cursor-pointer border-0 p-0"
+                      title="Mark as read"
+                    />
                   )}
                   <Button 
                     variant="ghost" 

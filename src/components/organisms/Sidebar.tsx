@@ -35,6 +35,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
   }, [window.location.pathname]);
 
   const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
     navigate('/login');
   };
 
@@ -49,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
       )}
 
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-50 h-screen border-r backdrop-blur-xl transition-all duration-500 ease-out flex flex-col overflow-hidden
+        className={`fixed lg:static inset-y-0 left-0 z-50 h-screen border-r backdrop-blur-xl transition-all duration-500 ease-out flex flex-col
           ${mobileOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
           ${!mobileOpen && isCollapsed ? 'lg:w-20' : 'lg:w-72'}
         `}
@@ -116,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
         </div>
       )}
 
-      <nav className="flex-1 px-3 space-y-1 relative z-10 stagger-children">
+      <nav className="flex-1 px-3 space-y-1 relative z-10 stagger-children overflow-y-auto">
         <SidebarItem icon={LayoutDashboard} label={isCollapsed ? "" : "Dashboard"} to="/" color="primary" />
         <SidebarItem icon={Users} label={isCollapsed ? "" : "Borrowers"} to="/borrowers" color="blue" />
         <SidebarItem icon={HandCoins} label={isCollapsed ? "" : "Loans"} to="/loans" color="secondary" />

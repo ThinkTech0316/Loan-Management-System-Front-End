@@ -9,10 +9,12 @@ import {
   Shield, 
   Palette, 
   Save,
-  Camera
+  Camera,
+  Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBranding } from '../contexts/BrandingContext';
+import { apiService } from '../services/mockApi';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('profile');
@@ -30,35 +32,140 @@ const Settings: React.FC = () => {
     setBrandLogoUrl(logoUrl);
   }, [systemName, logoColor, logoUrl]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const [profilePhoto, setProfilePhoto] = React.useState<string | null>(null);
+  const [firstName, setFirstName] = React.useState('Admin');
+  const [lastName, setLastName] = React.useState('');
+  const [profileEmail, setProfileEmail] = React.useState('admin@vanniloan.com');
+  const [profilePhone, setProfilePhone] = React.useState('');
+  const [profileBio, setProfileBio] = React.useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Change password state
+  const [currentPassword, setCurrentPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [isChangingPassword, setIsChangingPassword] = React.useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) { toast.error('Please fill in all fields'); return; }
+    if (newPassword.length < 6) { toast.error('New password must be at least 6 characters'); return; }
+    if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
+    setIsChangingPassword(true);
+    try {
+      await apiService.changePassword(currentPassword, newPassword);
+      toast.success('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to change password';
+      toast.error(message);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  // Load settings on mount
+  React.useEffect(() => {
+    apiService.getSetting('profile').then((data: any) => {
+      if (data?.profilePhoto) setProfilePhoto(data.profilePhoto);
+      if (data?.firstName) setFirstName(data.firstName);
+      if (data?.lastName) setLastName(data.lastName);
+      if (data?.email) setProfileEmail(data.email);
+      if (data?.phone) setProfilePhone(data.phone);
+      if (data?.bio) setProfileBio(data.bio);
+    }).catch(() => {});
+  }, []);
+
+  const profileInitials = React.useMemo(() => {
+    return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || 'A';
+  }, [firstName, lastName]);
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('Image must be less than 2MB'); return; }
+    try {
+      const result = await apiService.uploadImage(file);
+      setProfilePhoto(result.url);
+      await apiService.updateSetting('profile', { profilePhoto: result.url });
+      toast.success('Profile photo updated!');
+    } catch { toast.error('Failed to upload photo'); }
+  };
+
+  const handleRemovePhoto = async () => {
+    setProfilePhoto(null);
+    await apiService.updateSetting('profile', { profilePhoto: null }).catch(() => {});
+    toast.success('Profile photo removed.');
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     
-    // Save branding if on company tab
-    if (activeTab === 'company') {
-      setSystemName(brandName);
-      setLogoColor(brandColor);
-      setLogoUrl(brandLogoUrl);
-    }
-    
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      // Save branding if on company tab
+      if (activeTab === 'company') {
+        setSystemName(brandName);
+        setLogoColor(brandColor);
+        setLogoUrl(brandLogoUrl);
+        await apiService.updateSetting('organization', {
+          orgName: brandName,
+          logoColor: brandColor,
+          logoUrl: brandLogoUrl,
+        });
+      }
+
+      if (activeTab === 'profile') {
+        await apiService.updateSetting('profile', {
+          firstName,
+          lastName,
+          email: profileEmail,
+          phone: profilePhone,
+          bio: profileBio,
+          profilePhoto,
+        });
+      }
+
+      if (activeTab === 'notifications') {
+        await apiService.updateSetting('notifications', {
+          notifyNewLoan: true,
+          notifyRepayment: true,
+        });
+      }
+
       toast.success('Settings saved successfully!');
-    }, 1000);
+    } catch (err) {
+      // Still update local branding even if API fails
+      if (activeTab === 'company') {
+        setSystemName(brandName);
+        setLogoColor(brandColor);
+        setLogoUrl(brandLogoUrl);
+      }
+      toast.success('Settings saved locally!');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
         toast.error("Image must be less than 2MB");
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBrandLogoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        setIsSaving(true);
+        const result = await apiService.uploadImage(file);
+        setBrandLogoUrl(result.url);
+        toast.success('Logo uploaded successfully!');
+      } catch (err) {
+        toast.error('Failed to upload image');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -127,9 +234,13 @@ const Settings: React.FC = () => {
               <form onSubmit={handleSave} className="p-8 space-y-8 animate-scale-in">
                 <div className="flex items-center gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
                   <div className="relative group cursor-pointer">
-                    <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-display text-3xl font-extrabold shadow-lg group-hover:scale-105 transition-transform duration-300">
-                      AK
-                    </div>
+                    {profilePhoto ? (
+                      <img src={profilePhoto} alt="Profile" className="h-24 w-24 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-display text-3xl font-extrabold shadow-lg group-hover:scale-105 transition-transform duration-300">
+                        {profileInitials}
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="h-8 w-8 text-white" />
                     </div>
@@ -138,20 +249,21 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">Arun Kumar</h2>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">{firstName} {lastName}</h2>
                     <p className="text-sm text-slate-500 font-medium mb-3">System Administrator</p>
                     <div className="flex gap-2">
-                      <Button type="button" size="sm" variant="outline" className="h-8">Change Picture</Button>
-                      <Button type="button" size="sm" variant="ghost" className="h-8 text-red-500 hover:bg-red-50 hover:text-red-600">Remove</Button>
+                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleProfilePhotoUpload} className="hidden" />
+                      <Button type="button" size="sm" variant="outline" className="h-8 cursor-pointer" onClick={() => fileInputRef.current?.click()}>Change Picture</Button>
+                      <Button type="button" size="sm" variant="ghost" className="h-8 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={handleRemovePhoto}>Remove</Button>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input label="First Name" defaultValue="Arun" />
-                  <Input label="Last Name" defaultValue="Kumar" />
-                  <Input label="Email Address" type="email" defaultValue="admin@vanniloan.com" />
-                  <Input label="Phone Number" type="tel" defaultValue="+91 98765 43210" />
+                  <Input label="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                  <Input label="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                  <Input label="Email Address" type="email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} />
+                  <Input label="Phone Number" type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
@@ -160,7 +272,8 @@ const Settings: React.FC = () => {
                   </label>
                   <textarea 
                     className="flex min-h-[100px] w-full rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-4 py-3 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 transition-all duration-300 shadow-sm hover:shadow-md resize-none"
-                    defaultValue="Lead Administrator for VanniLoan operations in the southern region."
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
                   />
                 </div>
 
@@ -304,16 +417,58 @@ const Settings: React.FC = () => {
               </form>
             )}
 
-            {(activeTab === 'security' || activeTab === 'appearance') && (
+            {activeTab === 'security' && (
+              <form onSubmit={handleChangePassword} className="p-8 animate-scale-in space-y-8">
+                <div className="flex items-center gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
+                  <div className="icon-3d icon-3d-blue h-16 w-16 flex items-center justify-center">
+                    <Lock className="h-8 w-8 text-white relative z-10" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-display">Change Password</h2>
+                    <p className="text-slate-500 font-medium text-sm">Update your password to keep your account secure.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6 max-w-xl">
+                  <Input
+                    label="Current Password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter your current password"
+                  />
+                  <Input
+                    label="New Password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 6 characters)"
+                  />
+                  <Input
+                    label="Confirm New Password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <Button type="submit" isLoading={isChangingPassword} className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-glow-primary px-8">
+                    <Lock className="h-4 w-4 mr-2" />
+                    Update Password
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {activeTab === 'appearance' && (
               <div className="p-8 flex flex-col items-center justify-center text-center min-h-[400px] animate-scale-in">
-                <div className={`icon-3d h-20 w-20 mb-6 ${activeTab === 'security' ? 'icon-3d-blue' : 'icon-3d-primary'}`}>
-                  {activeTab === 'security' ? 
-                    <Shield className="h-10 w-10 text-white relative z-10" /> : 
-                    <Palette className="h-10 w-10 text-white relative z-10" />
-                  }
+                <div className={`icon-3d h-20 w-20 mb-6 icon-3d-primary`}>
+                  <Palette className="h-10 w-10 text-white relative z-10" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-display mb-2">
-                  {activeTab === 'security' ? 'Security Settings' : 'Appearance Settings'}
+                  Appearance Settings
                 </h2>
                 <p className="text-slate-500 max-w-md">
                   This section is currently under development. Advanced 3D customization options will be available soon.

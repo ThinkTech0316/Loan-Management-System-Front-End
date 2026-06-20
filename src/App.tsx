@@ -17,6 +17,18 @@ import Notifications from './pages/Notifications';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 
+function ProtectedRoute() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return <Navigate to="/login" replace />;
+  return <DashboardLayout />;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('auth_token');
+  if (token) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vanniloan-ui-theme">
@@ -25,12 +37,12 @@ function App() {
         <Routes>
           {/* Auth Routes */}
           <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
           </Route>
 
           {/* Dashboard Routes */}
-          <Route element={<DashboardLayout />}>
+          <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/borrowers" element={<Borrowers />} />
             <Route path="/loans" element={<Loans />} />

@@ -256,9 +256,13 @@ const Borrowers: React.FC = () => {
                   >
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-400/20 dark:from-blue-500/30 dark:to-cyan-400/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-extrabold text-xs border border-blue-200/50 dark:border-blue-800/50 group-hover:scale-105 transition-transform duration-300 shrink-0">
-                          {borrower.name.split(' ').map(n => n[0]).join('')}
-                        </div>
+                        {borrower.avatar ? (
+                          <img src={borrower.avatar} alt={borrower.name} className="h-10 w-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform duration-300 shrink-0" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-400/20 dark:from-blue-500/30 dark:to-cyan-400/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-extrabold text-xs border border-blue-200/50 dark:border-blue-800/50 group-hover:scale-105 transition-transform duration-300 shrink-0">
+                            {borrower.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{borrower.name}</p>
                           <p className="text-xs text-slate-500 font-medium truncate">NIC: {borrower.nic || 'N/A'}</p>

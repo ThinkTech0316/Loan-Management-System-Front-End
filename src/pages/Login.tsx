@@ -1,21 +1,44 @@
-import React from 'react';
+ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input } from '../components/atoms/Input';
 import { Button } from '../components/atoms/Button';
 import { ArrowRight, Lock, Mail } from 'lucide-react';
+import { apiService } from '../services/mockApi';
+import { toast } from 'sonner';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
+    if (!email.trim()) newErrors.email = 'Email is required';
+    if (!password.trim()) newErrors.password = 'Password is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await apiService.login(email, password);
+      localStorage.setItem('auth_token', result.token);
+      localStorage.setItem('auth_user', JSON.stringify(result.user));
+      toast.success(`Welcome back, ${result.user.name}!`);
       navigate('/');
-    }, 1500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      toast.error(message);
+      setErrors({ form: message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,6 +58,9 @@ const Login: React.FC = () => {
             type="email" 
             required 
             className="pl-10"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={errors.email}
           />
           <Mail className="absolute left-3 top-9 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
         </div>
@@ -51,10 +77,19 @@ const Login: React.FC = () => {
               type="password" 
               required 
               className="pl-10"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
             />
             <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
           </div>
         </div>
+
+        {errors.form && (
+          <div className="text-sm text-red-500 font-medium bg-red-50 dark:bg-red-950/30 p-3 rounded-xl border border-red-200 dark:border-red-900">
+            {errors.form}
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <input type="checkbox" id="remember" className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20 accent-primary" />
