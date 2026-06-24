@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   Menu,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { SidebarItem } from '../molecules/SidebarItem';
 import { Button } from '../atoms/Button';
@@ -35,8 +36,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
   }, [window.location.pathname]);
 
   const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
     navigate('/login');
   };
+
+  const user = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('auth_user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <>
@@ -49,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
       )}
 
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-50 h-screen border-r backdrop-blur-xl transition-all duration-500 ease-out flex flex-col overflow-hidden
+        className={`fixed lg:static inset-y-0 left-0 z-50 h-screen border-r backdrop-blur-xl transition-all duration-500 ease-out flex flex-col
           ${mobileOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
           ${!mobileOpen && isCollapsed ? 'lg:w-20' : 'lg:w-72'}
         `}
@@ -116,15 +129,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
         </div>
       )}
 
-      <nav className="flex-1 px-3 space-y-1 relative z-10 stagger-children">
-        <SidebarItem icon={LayoutDashboard} label={isCollapsed ? "" : "Dashboard"} to="/" color="primary" />
-        <SidebarItem icon={Users} label={isCollapsed ? "" : "Borrowers"} to="/borrowers" color="blue" />
-        <SidebarItem icon={HandCoins} label={isCollapsed ? "" : "Loans"} to="/loans" color="secondary" />
-        <SidebarItem icon={ShieldCheck} label={isCollapsed ? "" : "Fixed Deposits"} to="/fixed-deposits" color="primary" />
-        <SidebarItem icon={Wallet} label={isCollapsed ? "" : "Repayments"} to="/repayments" color="amber" />
-        <SidebarItem icon={BarChart3} label={isCollapsed ? "" : "Reports"} to="/reports" color="primary" />
+      <nav className="flex-1 px-3 space-y-1 relative z-10 stagger-children overflow-y-auto">
+        {!isSuperAdmin && (
+          <>
+            <SidebarItem icon={LayoutDashboard} label={isCollapsed ? "" : "Dashboard"} to="/" color="primary" />
+            <SidebarItem icon={Users} label={isCollapsed ? "" : "Borrowers"} to="/borrowers" color="blue" />
+            <SidebarItem icon={HandCoins} label={isCollapsed ? "" : "Loans"} to="/loans" color="secondary" />
+            <SidebarItem icon={ShieldCheck} label={isCollapsed ? "" : "Fixed Deposits"} to="/fixed-deposits" color="primary" />
+            <SidebarItem icon={Wallet} label={isCollapsed ? "" : "Repayments"} to="/repayments" color="amber" />
+            <SidebarItem icon={BarChart3} label={isCollapsed ? "" : "Reports"} to="/reports" color="primary" />
+          </>
+        )}
         <SidebarItem icon={Bell} label={isCollapsed ? "" : "Notifications"} to="/notifications" color="red" />
         <SidebarItem icon={Settings} label={isCollapsed ? "" : "Settings"} to="/settings" color="secondary" />
+        {isSuperAdmin && (
+          <>
+            <div className="pt-4 pb-2 px-3">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-faint)' }}>Admin</p>
+            </div>
+            <SidebarItem icon={ShieldAlert} label={isCollapsed ? "" : "Staff Management"} to="/staff" color="amber" />
+          </>
+        )}
       </nav>
 
       {!isCollapsed && (

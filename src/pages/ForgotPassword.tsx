@@ -3,13 +3,31 @@ import { Link } from 'react-router-dom';
 import { Input } from '../components/atoms/Input';
 import { Button } from '../components/atoms/Button';
 import { ArrowLeft, Send, Mail } from 'lucide-react';
+import { apiService } from '../services/mockApi';
+import { toast } from 'sonner';
 
 const ForgotPassword: React.FC = () => {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    if (!email.trim()) {
+      toast.error('Please enter your email address.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await apiService.forgotPassword(email);
+      setIsSubmitted(true);
+      toast.success('Password reset request sent!');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to send reset request';
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -21,7 +39,7 @@ const ForgotPassword: React.FC = () => {
         <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white font-display tracking-tight">Check your email</h2>
         <p className="text-slate-500 font-medium">
           We've sent a secure password reset link to<br/>
-          <span className="font-bold text-slate-900 dark:text-white text-lg mt-2 inline-block">arun@example.com</span>
+          <span className="font-bold text-slate-900 dark:text-white text-lg mt-2 inline-block">{email}</span>
         </p>
         <div className="pt-8">
           <Link to="/login">
@@ -50,11 +68,13 @@ const ForgotPassword: React.FC = () => {
             type="email" 
             required 
             className="pl-10 h-12 text-base"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <Mail className="absolute left-3 top-10 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
         </div>
         
-        <Button type="submit" className="w-full h-12 text-base font-bold shadow-glow-primary hover:-translate-y-1">
+        <Button type="submit" className="w-full h-12 text-base font-bold shadow-glow-primary hover:-translate-y-1" isLoading={isLoading}>
           Send Recovery Link
           <Send className="h-4 w-4 ml-1" />
         </Button>

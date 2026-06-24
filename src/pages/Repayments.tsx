@@ -262,15 +262,15 @@ const Repayments: React.FC = () => {
                     {new Date(payment.date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-5">
+                    <span className="text-base font-extrabold bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">Rs. {payment.amount.toLocaleString()}</span>
+                  </td>
+                  <td className="px-6 py-5">
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200 capitalize">
                       {payment.method.replace('_', ' ')}
                     </p>
                     {payment.reference && (
                       <p className="text-xs text-slate-500 font-mono mt-0.5">Ref: {payment.reference}</p>
                     )}
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="text-base font-extrabold bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">Rs. {payment.amount.toLocaleString()}</span>
                   </td>
                   <td className="px-6 py-5">
                     <Badge variant={payment.status === 'paid' ? 'success' : 'error'} className="shadow-sm">

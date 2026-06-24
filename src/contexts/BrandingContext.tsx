@@ -21,8 +21,17 @@ const initialState: BrandingState = {
 const BrandingContext = createContext<BrandingState>(initialState);
 
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
+  const getAuthUser = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+      return user;
+    } catch {
+      return {};
+    }
+  };
+
   const [systemName, setSystemNameState] = useState<string>(
-    () => localStorage.getItem('branding-name') || 'VanniLoan'
+    () => localStorage.getItem('branding-name') || getAuthUser().companyName || 'VanniLoan'
   );
   
   const [logoColor, setLogoColorState] = useState<string>(
@@ -30,7 +39,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
   );
 
   const [logoUrl, setLogoUrlState] = useState<string>(
-    () => localStorage.getItem('branding-logo-url') || ''
+    () => localStorage.getItem('branding-logo-url') || getAuthUser().logoUrl || ''
   );
 
   const setSystemName = (name: string) => {
