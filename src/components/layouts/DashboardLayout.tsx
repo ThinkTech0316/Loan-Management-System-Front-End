@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../organisms/Sidebar';
-import { Bell, Search, Sparkles, Menu, LogOut } from 'lucide-react';
+import { Bell, Search, Menu, LogOut } from 'lucide-react';
 import { Button } from '../atoms/Button';
 import { Toaster } from 'sonner';
 import { ThemeToggle } from '../atoms/ThemeToggle';
@@ -11,6 +11,7 @@ import { apiService } from '../../services/mockApi';
 
 export const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const navigate = useNavigate();
   const { systemName } = useBranding();
   const [profilePhoto, setProfilePhoto] = React.useState<string | null>(null);
   const [profileName, setProfileName] = React.useState('Admin');
@@ -36,7 +37,7 @@ export const DashboardLayout: React.FC = () => {
   }, [profileName]);
 
   return (
-    <div className="flex h-screen mesh-gradient" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)' }}>
+    <div className="flex h-screen w-full overflow-hidden mesh-gradient" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)' }}>
       <Toaster position="top-right" richColors />
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       
@@ -77,13 +78,9 @@ export const DashboardLayout: React.FC = () => {
           <div className="flex items-center gap-4">
             <ThemeToggle />
 
-            {/* Premium badge */}
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-200/50">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-xs font-bold text-amber-600">PRO</span>
-            </div>
 
-            <Button variant="ghost" size="icon" className="relative hover:bg-primary/5">
+
+            <Button variant="ghost" size="icon" className="relative hover:bg-primary/5" onClick={() => navigate('/notifications')}>
               <Bell className="h-5 w-5" style={{ color: 'var(--color-subtle)' }} />
               <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-red-500 rounded-full border-2 animate-pulse" style={{ borderColor: 'var(--color-surface)' }}></span>
             </Button>

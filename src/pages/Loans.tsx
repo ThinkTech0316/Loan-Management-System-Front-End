@@ -15,12 +15,14 @@ import {
   HandCoins,
   Search,
   Filter,
-  MapPin
+  MapPin,
+  Trash2
 } from 'lucide-react';
 import { apiService, type Installment } from '../services/mockApi';
 import type { Loan, Borrower, Repayment } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useConfirm } from '../hooks/useConfirm';
 
 const Loans: React.FC = () => {
   const [loans, setLoans] = React.useState<Loan[]>([]);
@@ -28,6 +30,7 @@ const Loans: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedDistrict, setSelectedDistrict] = React.useState<string>('All');
   const [searchParams, setSearchParams] = useSearchParams();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   // Details Modal State
   const [selectedLoanId, setSelectedLoanId] = React.useState<string | null>(null);
@@ -116,7 +119,7 @@ const Loans: React.FC = () => {
       return;
     }
 
-    if (confirm("Are you sure you want to undo the most recent payment for this loan?")) {
+    if (await confirm("Are you sure you want to undo the most recent payment for this loan?")) {
       await apiService.deleteRepayment(latestRepayment.id);
       toast.success("Payment undone successfully.");
       apiService.getRepaymentSchedule(selectedLoanId).then(setScheduleInstallments);
@@ -124,6 +127,21 @@ const Loans: React.FC = () => {
         setLoanRepayments(repayments.filter(r => r.loanId === selectedLoanId));
       });
       fetchData();
+    }
+  };
+
+  const handleDeleteLoan = async (idToDel?: string) => {
+    const id = idToDel || selectedLoanId;
+    if (!id) return;
+    if (await confirm("Are you sure you want to permanently delete this loan and all its repayments? This cannot be undone.")) {
+      try {
+        await apiService.deleteLoan(id);
+        toast.success("Loan deleted successfully");
+        setSelectedLoanId(null);
+        fetchData();
+      } catch (e) {
+        toast.error("Failed to delete loan");
+      }
     }
   };
 
@@ -409,9 +427,19 @@ const Loans: React.FC = () => {
                         {new Date(loan.startDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical className="h-4 w-4 text-slate-400" />
-                        </Button>
+                        <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLoan(loan.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -584,12 +612,22 @@ const Loans: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">Loan Details: {selectedLoanId}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">Full amortization schedule and repayment history</p>
               </div>
-              <button
-                onClick={() => setSelectedLoanId(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+                  onClick={() => handleDeleteLoan()}
+                >
+                  Delete Loan
+                </Button>
+                <button
+                  onClick={() => setSelectedLoanId(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
@@ -844,6 +882,7 @@ const Loans: React.FC = () => {
         document.body
       )}
 
+      <ConfirmDialog />
     </div>
   );
 };

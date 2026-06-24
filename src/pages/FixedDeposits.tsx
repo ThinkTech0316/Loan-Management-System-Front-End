@@ -15,12 +15,14 @@ import {
   ShieldCheck,
   Search,
   Filter,
-  MapPin
+  MapPin,
+  Trash2
 } from 'lucide-react';
 import { apiService } from '../services/mockApi';
 import type { FixedDeposit, Borrower, FDEarning } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useConfirm } from '../hooks/useConfirm';
 
 const FixedDeposits: React.FC = () => {
   const [fixedDeposits, setFixedDeposits] = React.useState<FixedDeposit[]>([]);
@@ -28,6 +30,7 @@ const FixedDeposits: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedDistrict, setSelectedDistrict] = React.useState<string>('All');
   const [searchParams, setSearchParams] = useSearchParams();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   // Details Modal State
   const [selectedFDId, setSelectedFDId] = React.useState<string | null>(null);
@@ -71,6 +74,21 @@ const FixedDeposits: React.FC = () => {
 
   const handleOpenModal = () => {
     setSearchParams({ create: 'true' });
+  };
+
+  const handleDeleteFD = async (idToDel?: string) => {
+    const id = idToDel || selectedFDId;
+    if (!id) return;
+    if (await confirm("Are you sure you want to permanently delete this fixed deposit? This cannot be undone.")) {
+      try {
+        await apiService.deleteFixedDeposit(id);
+        toast.success("Fixed Deposit deleted successfully");
+        setSelectedFDId(null);
+        fetchData();
+      } catch (e) {
+        toast.error("Failed to delete fixed deposit");
+      }
+    }
   };
 
   const handleCloseModal = () => {
@@ -338,9 +356,19 @@ const FixedDeposits: React.FC = () => {
                     {new Date(fd.maturityDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-5 text-right">
-                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreVertical className="h-4 w-4 text-slate-400" />
-                    </Button>
+                    <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFD(fd.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -496,12 +524,22 @@ const FixedDeposits: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">Fixed Deposit Details: {selectedFDId}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">Month-by-month earnings projection</p>
               </div>
-              <button 
-                onClick={() => setSelectedFDId(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+                  onClick={() => handleDeleteFD()}
+                >
+                  Delete FD
+                </Button>
+                <button 
+                  onClick={() => setSelectedFDId(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
@@ -579,6 +617,8 @@ const FixedDeposits: React.FC = () => {
         </div>,
         document.body
       )}
+      
+      <ConfirmDialog />
     </div>
   );
 };

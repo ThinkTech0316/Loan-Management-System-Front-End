@@ -22,6 +22,7 @@ import type { Borrower } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { useConfirm } from '../hooks/useConfirm';
 
 const Borrowers: React.FC = () => {
   const [borrowers, setBorrowers] = React.useState<Borrower[]>([]);
@@ -29,6 +30,7 @@ const Borrowers: React.FC = () => {
   const [selectedDistrict, setSelectedDistrict] = React.useState<string>('All');
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = React.useState<'active' | 'recycle_bin'>('active');
+  const { confirm, ConfirmDialog } = useConfirm();
   
   // Form State
   const [name, setName] = React.useState('');
@@ -86,6 +88,7 @@ const Borrowers: React.FC = () => {
       newErrors.phone = 'Please enter a valid phone number';
     }
     if (!nic.trim()) newErrors.nic = 'NIC number is required';
+    if (!district.trim()) newErrors.district = 'Area/Village is required';
     if (!address.trim()) newErrors.address = 'Address is required';
 
     if (Object.keys(newErrors).length > 0) {
@@ -115,7 +118,7 @@ const Borrowers: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to move this client to the Recycle Bin?")) {
+    if (await confirm("Are you sure you want to move this client to the Recycle Bin?")) {
       await apiService.deleteBorrower(id);
       toast.success("Client moved to Recycle Bin.");
       fetchBorrowers();
@@ -129,7 +132,7 @@ const Borrowers: React.FC = () => {
   };
 
   const handlePermDelete = async (id: string) => {
-    if (confirm("WARNING: Are you sure you want to permanently erase this client? This cannot be undone!")) {
+    if (await confirm("WARNING: Are you sure you want to permanently erase this client? This cannot be undone!")) {
       await apiService.permanentlyDeleteBorrower(id);
       toast.success("Client permanently deleted.");
       fetchBorrowers();
@@ -146,7 +149,13 @@ const Borrowers: React.FC = () => {
     return matchesSearch && matchesDistrict;
   });
 
-  const districtsList = ['All', 'Yogapuram', 'Anichchayankullam', 'Vadakaadu', 'Mallavi Town', 'Thunukkai', 'Alankulam', 'Therankandal'];
+  const uniqueDistricts = React.useMemo(() => {
+    const predefined = ['Yogapuram', 'Anichchayankullam', 'Vadakaadu', 'Mallavi Town', 'Thunukkai', 'Alankulam', 'Therankandal'];
+    const fromBorrowers = borrowers.map(b => b.district).filter(Boolean);
+    return Array.from(new Set([...predefined, ...fromBorrowers])).sort();
+  }, [borrowers]);
+
+  const districtsFilterList = ['All', ...uniqueDistricts];
 
   return (
     <div className="space-y-8">
@@ -216,7 +225,7 @@ const Borrowers: React.FC = () => {
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
               >
-                {districtsList.map(d => <option key={d} value={d}>{d === 'All' ? 'All Areas' : d}</option>)}
+                {districtsFilterList.map(d => <option key={d} value={d}>{d === 'All' ? 'All Areas' : d}</option>)}
               </select>
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-primary transition-colors pointer-events-none" />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -413,23 +422,17 @@ const Borrowers: React.FC = () => {
                   error={errors.nic}
                 />
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 tracking-wide">
-                    Area/Village
-                  </label>
-                  <div className="relative group">
-                    <select
-                      className="flex h-11 w-full rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 transition-all duration-300 shadow-sm hover:shadow-md appearance-none"
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                    >
-                      {districtsList.slice(1).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
+                  <Input
+                    label="Area/Village"
+                    placeholder="Type or select area..."
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    error={errors.district}
+                    list="district-options"
+                  />
+                  <datalist id="district-options">
+                    {uniqueDistricts.map(d => <option key={d} value={d} />)}
+                  </datalist>
                 </div>
               </div>
               <div className="space-y-2">
@@ -468,6 +471,8 @@ const Borrowers: React.FC = () => {
         </div>,
         document.body
       )}
+
+      <ConfirmDialog />
     </div>
   );
 };

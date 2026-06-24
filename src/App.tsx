@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
+import Staff from './pages/Staff';
 
 function ProtectedRoute() {
   const token = localStorage.getItem('auth_token');
@@ -26,6 +27,30 @@ function ProtectedRoute() {
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('auth_token');
   if (token) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  try {
+    const user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    if (user.role !== 'superadmin') {
+      return <Navigate to="/" replace />;
+    }
+  } catch {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  try {
+    const user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    if (user.role === 'superadmin') {
+      return <Navigate to="/staff" replace />;
+    }
+  } catch {
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -43,14 +68,18 @@ function App() {
 
           {/* Dashboard Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/borrowers" element={<Borrowers />} />
-            <Route path="/loans" element={<Loans />} />
-            <Route path="/fixed-deposits" element={<FixedDeposits />} />
-            <Route path="/repayments" element={<Repayments />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
+            {/* Admin Only Routes (Finance) */}
+            <Route path="/" element={<AdminRoute><Dashboard /></AdminRoute>} />
+            <Route path="/borrowers" element={<AdminRoute><Borrowers /></AdminRoute>} />
+            <Route path="/loans" element={<AdminRoute><Loans /></AdminRoute>} />
+            <Route path="/fixed-deposits" element={<AdminRoute><FixedDeposits /></AdminRoute>} />
+            <Route path="/repayments" element={<AdminRoute><Repayments /></AdminRoute>} />
+            <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/settings" element={<Settings />} />
+            
+            {/* SuperAdmin Only Routes */}
+            <Route path="/staff" element={<SuperAdminRoute><Staff /></SuperAdminRoute>} />
           </Route>
 
           {/* Fallback */}

@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   Menu,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { SidebarItem } from '../molecules/SidebarItem';
 import { Button } from '../atoms/Button';
@@ -39,6 +40,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     localStorage.removeItem('auth_user');
     navigate('/login');
   };
+
+  const user = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('auth_user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <>
@@ -119,14 +130,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
       )}
 
       <nav className="flex-1 px-3 space-y-1 relative z-10 stagger-children overflow-y-auto">
-        <SidebarItem icon={LayoutDashboard} label={isCollapsed ? "" : "Dashboard"} to="/" color="primary" />
-        <SidebarItem icon={Users} label={isCollapsed ? "" : "Borrowers"} to="/borrowers" color="blue" />
-        <SidebarItem icon={HandCoins} label={isCollapsed ? "" : "Loans"} to="/loans" color="secondary" />
-        <SidebarItem icon={ShieldCheck} label={isCollapsed ? "" : "Fixed Deposits"} to="/fixed-deposits" color="primary" />
-        <SidebarItem icon={Wallet} label={isCollapsed ? "" : "Repayments"} to="/repayments" color="amber" />
-        <SidebarItem icon={BarChart3} label={isCollapsed ? "" : "Reports"} to="/reports" color="primary" />
+        {!isSuperAdmin && (
+          <>
+            <SidebarItem icon={LayoutDashboard} label={isCollapsed ? "" : "Dashboard"} to="/" color="primary" />
+            <SidebarItem icon={Users} label={isCollapsed ? "" : "Borrowers"} to="/borrowers" color="blue" />
+            <SidebarItem icon={HandCoins} label={isCollapsed ? "" : "Loans"} to="/loans" color="secondary" />
+            <SidebarItem icon={ShieldCheck} label={isCollapsed ? "" : "Fixed Deposits"} to="/fixed-deposits" color="primary" />
+            <SidebarItem icon={Wallet} label={isCollapsed ? "" : "Repayments"} to="/repayments" color="amber" />
+            <SidebarItem icon={BarChart3} label={isCollapsed ? "" : "Reports"} to="/reports" color="primary" />
+          </>
+        )}
         <SidebarItem icon={Bell} label={isCollapsed ? "" : "Notifications"} to="/notifications" color="red" />
         <SidebarItem icon={Settings} label={isCollapsed ? "" : "Settings"} to="/settings" color="secondary" />
+        {isSuperAdmin && (
+          <>
+            <div className="pt-4 pb-2 px-3">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-faint)' }}>Admin</p>
+            </div>
+            <SidebarItem icon={ShieldAlert} label={isCollapsed ? "" : "Staff Management"} to="/staff" color="amber" />
+          </>
+        )}
       </nav>
 
       {!isCollapsed && (

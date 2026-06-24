@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input } from '../components/atoms/Input';
 import { Button } from '../components/atoms/Button';
@@ -28,6 +28,9 @@ const Login: React.FC = () => {
     setIsLoading(true);
     try {
       const result = await apiService.login(email, password);
+      // Ensure we have a tenantId from the backend
+      const tenantId = result.user.tenantId || 'tenant_default';
+      localStorage.setItem('tenant_id', tenantId);
       localStorage.setItem('auth_token', result.token);
       localStorage.setItem('auth_user', JSON.stringify(result.user));
       toast.success(`Welcome back, ${result.user.name}!`);
