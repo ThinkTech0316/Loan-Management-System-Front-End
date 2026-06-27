@@ -1,0 +1,24 @@
+{
+  "name": "loan-management-system-back-end",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "REST API backend for the Loan Management System frontend.",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js && node --check src/bootstrap.js && node --check src/app.js && node --check src/config.js && node --check src/database.js && node --check src/errors.js && node --check src/http.js && node --check src/migrate.js && node --check src/schema.js && node --check src/seed.js && node --check src/services.js && node --check src/validators.js",
+    "db:init": "node src/migrate.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.1",
+    "pg": "^8.22.0"
+  }
+}
