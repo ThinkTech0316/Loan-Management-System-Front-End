@@ -21,6 +21,7 @@ export const DashboardLayout: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    localStorage.removeItem('tenant_id');
     window.location.href = '/login';
   };
 
