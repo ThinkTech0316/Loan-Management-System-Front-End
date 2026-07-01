@@ -27,7 +27,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { apiService, type Installment } from '../services/mockApi';
+import { apiService, type Installment } from '../services/api';
 import type { DashboardStats, CollectionData, Loan, Repayment } from '../types';
 import { useNavigate } from 'react-router-dom';
 

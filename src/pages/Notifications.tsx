@@ -11,11 +11,10 @@ import {
   Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiService, type Notification } from '../services/mockApi';
+import { apiService, type Notification } from '../services/api';
 
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
 
   const fetchNotifications = React.useCallback(async () => {
     try {
@@ -24,7 +23,7 @@ const Notifications: React.FC = () => {
     } catch (err) {
       toast.error('Failed to load notifications');
     } finally {
-      setIsLoading(false);
+      // Done loading
     }
   }, []);
 

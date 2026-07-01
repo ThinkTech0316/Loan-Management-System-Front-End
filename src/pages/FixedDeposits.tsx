@@ -6,7 +6,6 @@ import { Badge } from '../components/atoms/Badge.tsx';
 import { Input } from '../components/atoms/Input';
 import { 
   Plus, 
-  MoreVertical, 
   ArrowUpRight,
   Clock,
   CheckCircle2,
@@ -18,7 +17,7 @@ import {
   MapPin,
   Trash2
 } from 'lucide-react';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 import type { FixedDeposit, Borrower, FDEarning } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';

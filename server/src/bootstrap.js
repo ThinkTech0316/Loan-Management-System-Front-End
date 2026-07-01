@@ -2,14 +2,11 @@ import pg from 'pg';
 import { config } from './config.js';
 
 const ensureDatabaseExists = async () => {
-  const url = new URL(config.databaseUrl);
+  const url = new URL(config.masterDbUrl);
   const databaseName = url.pathname.replace(/^\//, '');
   if (!databaseName) return;
 
-  // Connect to the default 'postgres' database to create our database
-  const adminUrl = new URL(config.databaseUrl);
-  adminUrl.pathname = '/postgres';
-
+  const adminUrl = new URL(config.rootDbUrl);
   const client = new pg.Client({ connectionString: adminUrl.toString() });
   try {
     await client.connect();
@@ -31,12 +28,11 @@ export const bootstrapDatabase = async () => {
     await ensureDatabaseExists();
 
     const { query } = await import('./database.js');
-    const { globalSchemaSql } = await import('./schema.js');
-    const { seedDatabase } = await import('./seed.js');
+    const { masterSchemaSql } = await import('./schema.js');
+    const { seedMasterDatabase } = await import('./seed.js');
 
-    // PostgreSQL doesn't support multiple statements in one query,
-    // so we split and execute each CREATE TABLE separately
-    const statements = globalSchemaSql
+    // Run master migrations
+    const statements = masterSchemaSql
       .split(';')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
@@ -45,11 +41,11 @@ export const bootstrapDatabase = async () => {
       await query(stmt);
     }
 
-    await seedDatabase();
-    console.log('[Bootstrap] Database schema and seed data ready.');
+    await seedMasterDatabase();
+    console.log('[Bootstrap] Master Database schema and seed data ready.');
   } catch (error) {
     if (error.code === 'ECONNREFUSED') {
-      console.error('[Bootstrap] Could not connect to PostgreSQL. Start PostgreSQL or update DATABASE_URL in .env.');
+      console.error('[Bootstrap] Could not connect to PostgreSQL.');
     }
     throw error;
   }

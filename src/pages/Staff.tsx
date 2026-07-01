@@ -4,7 +4,7 @@ import { Card } from '../components/atoms/Card';
 import { Button } from '../components/atoms/Button';
 import { Badge } from '../components/atoms/Badge.tsx';
 import { Input } from '../components/atoms/Input';
-import { 
+import {
   Users,
   Plus,
   Search,
@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   X
 } from 'lucide-react';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { useConfirm } from '../hooks/useConfirm';
 
@@ -66,7 +66,7 @@ const Staff: React.FC = () => {
       toast.error('Please fill in all required fields');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       await apiService.createUser({ name, email, password, role });
@@ -92,8 +92,8 @@ const Staff: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredUsers = users.filter(u =>
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -116,13 +116,13 @@ const Staff: React.FC = () => {
 
       <Card className="overflow-hidden animate-slide-in-up" style={{ animationDelay: '100ms' }}>
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-cyan-400" />
-        
+
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 relative z-10">
           <div className="relative w-full md:w-[400px] group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search staff by name or email..." 
+            <input
+              type="text"
+              placeholder="Search staff by name or email..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-primary/20 text-sm dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-200 shadow-sm transition-all duration-300"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -149,7 +149,7 @@ const Staff: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user, index) => (
+                filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group">
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
@@ -184,10 +184,10 @@ const Staff: React.FC = () => {
                     </td>
                     <td className="px-6 py-5 text-right">
                       {user.role !== 'superadmin' && (
-                        <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                        <div className="flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                             onClick={() => handleDelete(user.id)}
                           >
@@ -209,7 +209,7 @@ const Staff: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-scale-in">
           <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-cyan-400" />
-            
+
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -221,7 +221,7 @@ const Staff: React.FC = () => {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleSave} className="p-6 space-y-5">
               <Input
                 label="Full Name"
@@ -243,7 +243,7 @@ const Staff: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              
+
               {/* Role is strictly enforced as Admin */}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">

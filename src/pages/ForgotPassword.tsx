@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Input } from '../components/atoms/Input';
 import { Button } from '../components/atoms/Button';
 import { ArrowLeft, Send, Mail } from 'lucide-react';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 import { toast } from 'sonner';
 
 const ForgotPassword: React.FC = () => {

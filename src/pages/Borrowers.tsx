@@ -17,7 +17,7 @@ import {
   Users,
   AlertCircle
 } from 'lucide-react';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 import type { Borrower } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';

@@ -6,7 +6,6 @@ import { Badge } from '../components/atoms/Badge.tsx';
 import { Input } from '../components/atoms/Input';
 import {
   Plus,
-  MoreVertical,
   ArrowUpRight,
   Clock,
   CheckCircle2,
@@ -18,7 +17,7 @@ import {
   MapPin,
   Trash2
 } from 'lucide-react';
-import { apiService, type Installment } from '../services/mockApi';
+import { apiService, type Installment } from '../services/api';
 import type { Loan, Borrower, Repayment } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -428,9 +427,9 @@ const Loans: React.FC = () => {
                       </td>
                       <td className="px-6 py-5 text-right">
                         <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -613,9 +612,9 @@ const Loans: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-0.5">Full amortization schedule and repayment history</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
                   onClick={() => handleDeleteLoan()}
                 >
@@ -831,8 +830,8 @@ const Loans: React.FC = () => {
                   <button
                     type="button"
                     className={`p-2 border rounded-xl text-xs font-medium transition-all ${quickPayMethod === 'bank_transfer'
-                        ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
-                        : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400'
+                      ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
+                      : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400'
                       }`}
                     onClick={() => setQuickPayMethod('bank_transfer')}
                   >
@@ -841,8 +840,8 @@ const Loans: React.FC = () => {
                   <button
                     type="button"
                     className={`p-2 border rounded-xl text-xs font-medium transition-all ${quickPayMethod === 'cash'
-                        ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
-                        : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400'
+                      ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
+                      : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400'
                       }`}
                     onClick={() => setQuickPayMethod('cash')}
                   >
@@ -851,8 +850,8 @@ const Loans: React.FC = () => {
                   <button
                     type="button"
                     className={`p-2 border rounded-xl text-xs font-medium transition-all ${quickPayMethod === 'mobile_wallet'
-                        ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
-                        : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400'
+                      ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
+                      : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400'
                       }`}
                     onClick={() => setQuickPayMethod('mobile_wallet')}
                   >

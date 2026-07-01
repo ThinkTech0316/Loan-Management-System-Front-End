@@ -8,28 +8,28 @@ export const AuthLayout: React.FC = () => {
   const { systemName, logoColor, logoUrl } = useBranding();
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 dark:bg-slate-950">
       {/* Left side: Content */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 md:p-12 relative">
+      <div className="flex flex-col justify-center items-center p-8 md:p-12 relative overflow-y-auto w-full max-w-full">
         {/* Background decorations */}
         <div className="absolute top-20 left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl animate-breathe pointer-events-none" />
         <div className="absolute bottom-20 right-10 w-24 h-24 bg-secondary/5 rounded-full blur-3xl animate-breathe pointer-events-none" style={{ animationDelay: '2s' }} />
         
-        <div className="w-full max-w-md relative z-10">
+        <div className="w-full max-w-md relative z-10 my-auto">
           <div className="flex items-center gap-3 mb-12 animate-slide-in-up">
-            <div className={`icon-3d icon-3d-${logoColor} h-12 w-12 flex items-center justify-center overflow-hidden animate-float-slow`}>
+            <div className={`icon-3d icon-3d-${logoColor} h-12 w-12 flex items-center justify-center overflow-hidden animate-float-slow shrink-0`}>
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
               ) : (
                 <HandCoins className="text-white h-6 w-6 relative z-10" />
               )}
             </div>
-            <div>
-              <span className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
+            <div className="min-w-0">
+              <span className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display block truncate">
                 {systemName}
               </span>
-              <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
-                <Sparkles className="h-3 w-3 text-amber-400" />
+              <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium truncate">
+                <Sparkles className="h-3 w-3 text-amber-400 shrink-0" />
                 Financial Suite
               </span>
             </div>
@@ -37,13 +37,13 @@ export const AuthLayout: React.FC = () => {
           <Outlet />
         </div>
         
-        <footer className="mt-12 text-center text-sm text-slate-400 font-medium">
+        <footer className="mt-12 text-center text-sm text-slate-400 font-medium pb-8">
           &copy; {new Date().getFullYear()} {systemName} Fintech Solutions. All rights reserved.
         </footer>
       </div>
 
       {/* Right side: Immersive 3D showcase */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-12 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="hidden lg:flex flex-col items-center justify-center p-12 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 w-full">
         {/* Animated orbs */}
         <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-primary/20 rounded-full blur-[100px] animate-breathe pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-secondary/20 rounded-full blur-[100px] animate-breathe pointer-events-none" style={{ animationDelay: '2s' }} />

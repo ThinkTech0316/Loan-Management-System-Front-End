@@ -19,18 +19,20 @@ export default defineConfig({
         short_name: 'VanniLoan',
         description: 'VanniLoan Management System',
         theme_color: '#ffffff',
-        background_color: '#ffffff',
+        background_color: 'transparent',
         display: 'standalone',
         icons: [
           {
             src: '/icon-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: '/icon-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
       }

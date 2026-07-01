@@ -1,21 +1,18 @@
-import pg from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { config } from './config.js';
+import { getTenantPool, clearTenantPool } from './db/tenant.js';
+import { masterPool } from './db/master.js';
 
-export const pool = new pg.Pool({ connectionString: config.databaseUrl });
-
-// This holds the tenant schema name for the current async execution context
+// This holds the tenantId (Client UUID) for the current async execution context
 export const tenantContext = new AsyncLocalStorage();
 
 export const query = async (text, params = []) => {
-  const tenantSchema = tenantContext.getStore();
+  const tenantId = tenantContext.getStore();
+  
+  // If no tenant context, default to the master database (for global operations)
+  const pool = tenantId ? await getTenantPool(tenantId) : masterPool;
+  
   const client = await pool.connect();
   try {
-    if (tenantSchema) {
-      await client.query(`SET search_path TO "${tenantSchema}", public`);
-    } else {
-      await client.query('SET search_path TO public');
-    }
     const result = await client.query(text, params);
     return {
       rows: result.rows ?? [],
@@ -27,14 +24,11 @@ export const query = async (text, params = []) => {
 };
 
 export const transaction = async (callback) => {
-  const tenantSchema = tenantContext.getStore();
+  const tenantId = tenantContext.getStore();
+  const pool = tenantId ? await getTenantPool(tenantId) : masterPool;
+  
   const client = await pool.connect();
   try {
-    if (tenantSchema) {
-      await client.query(`SET search_path TO "${tenantSchema}", public`);
-    } else {
-      await client.query('SET search_path TO public');
-    }
     await client.query('BEGIN');
     const wrapped = {
       query: async (text, params = []) => {
@@ -56,4 +50,6 @@ export const transaction = async (callback) => {
   }
 };
 
-export const closeDatabase = () => pool.end();
+export const closeDatabase = async () => {
+    await masterPool.end();
+};

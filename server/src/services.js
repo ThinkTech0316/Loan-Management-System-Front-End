@@ -1,3 +1,4 @@
+import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { sendSMS } from './sms.js';
 import { sendWelcomeEmail } from './email.js';
@@ -173,29 +174,65 @@ export const login = async (payload) => {
 
   if (!email || !password) throw badRequest('Email and password are required');
 
-  const { rows } = await query('SELECT * FROM global_users WHERE lower(email) = $1 AND is_active = TRUE', [email]);
-  const user = rows[0];
-  if (!user) throw unauthorized('Invalid email or password');
+  const { masterPool } = await import('./db/master.js');
+  const { getTenantPool } = await import('./db/tenant.js');
 
-  const passwordMatch = await bcrypt.compare(password, user.password);
-  if (!passwordMatch) throw unauthorized('Invalid email or password');
+  // 1. Check Master Users (Super Admin or Client Owners)
+  const { rows: masterUsers } = await masterPool.query('SELECT * FROM master_users WHERE lower(email) = $1 AND status = $2', [email, 'active']);
+  if (masterUsers.length > 0) {
+    const user = masterUsers[0];
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (passwordMatch) {
+      const isSuperAdmin = user.role === 'superadmin';
+      return {
+        token: Buffer.from(`${user.id}:${Date.now()}`).toString('base64url'),
+        user: {
+          id: user.id,
+          name: isSuperAdmin ? 'Super Admin' : (user.company_name || 'Client Admin'),
+          email: user.email,
+          role: user.role,
+          tenantId: isSuperAdmin ? null : user.id, // For clients, their master_users ID is the tenant ID
+          companyName: isSuperAdmin ? 'SaaS Platform' : user.company_name,
+          logoUrl: null,
+        },
+      };
+    }
+  }
 
-  const { rows: tenantRows } = await query('SELECT * FROM tenants WHERE id = $1', [user.tenant_id]);
-  const tenant = tenantRows[0];
-  if (!tenant) throw unauthorized('Tenant not found');
+  // 2. Check Tenant Staff (Iterate through active clients)
+  const { rows: clients } = await masterPool.query('SELECT * FROM master_users WHERE role = $1 AND status = $2', ['admin', 'active']);
+  
+  for (const client of clients) {
+    try {
+      const tenantPool = await getTenantPool(client.id);
+      const { rows: users } = await tenantPool.query('SELECT * FROM users WHERE lower(email) = $1 AND is_active = TRUE', [email]);
+      
+      if (users.length > 0) {
+        const user = users[0];
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        
+        if (passwordMatch) {
+          return {
+            token: Buffer.from(`${user.id}:${Date.now()}`).toString('base64url'),
+            user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              tenantId: client.id, // This is returned to frontend, which sets X-Tenant-Id
+              companyName: client.company_name,
+              logoUrl: null,
+            },
+          };
+        }
+      }
+    } catch (e) {
+      // Ignore errors from connecting to a specific tenant DB during search
+      console.error(e);
+    }
+  }
 
-  return {
-    token: Buffer.from(`${user.id}:${Date.now()}`).toString('base64url'),
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      tenantId: tenant.schema_name, // Send schema_name as tenantId for X-Tenant-Id header
-      companyName: tenant.company_name,
-      logoUrl: tenant.logo_url,
-    },
-  };
+  throw unauthorized('Invalid email or password');
 };
 
 export const requestPasswordReset = async (payload) => {
@@ -757,7 +794,14 @@ export const listSettings = async () => {
 };
 
 export const getSetting = async (key) => {
-  const { rows } = await query('SELECT value FROM settings WHERE "key" = $1', [key]);
+  const tenantId = tenantContext.getStore();
+  if (!tenantId) {
+    if (key === 'profile') return { firstName: 'Super', lastName: 'Admin', role: 'superadmin' };
+    if (key === 'organization') return { orgName: 'SaaS Platform' };
+    return null;
+  }
+
+  const { rows } = await query('SELECT value FROM settings WHERE key = $1', [key]);
   if (rows.length === 0) throw notFound('Setting not found');
   return rows[0].value;
 };
@@ -794,53 +838,111 @@ export const changePassword = async (payload) => {
   if (!currentPassword || !newPassword) throw badRequest('Current password and new password are required');
   if (String(newPassword).length < 6) throw badRequest('New password must be at least 6 characters');
 
-  // Need a way to identify current user, defaulting to first active user in global_users for demo
-  const { rows } = await query('SELECT * FROM global_users WHERE is_active = TRUE LIMIT 1');
+  // Need a way to identify current user, defaulting to first active user in users for demo
+  const { rows } = await query('SELECT * FROM users WHERE is_active = TRUE LIMIT 1');
   const user = rows[0];
   if (!user) throw notFound('No active user found');
+  
   if (user.password !== currentPassword) {
     const match = await bcrypt.compare(currentPassword, user.password);
     if (!match) throw unauthorized('Current password is incorrect');
   }
 
   const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-  await query('UPDATE global_users SET password = $1 WHERE id = $2', [hashedNewPassword, user.id]);
+  await query('UPDATE users SET password = $1 WHERE id = $2', [hashedNewPassword, user.id]);
   return { message: 'Password changed successfully' };
 };
 
-import { getTenantSchemaSql } from './schema.js';
+// Removed invalid import
+import { rootPool, masterPool } from './db/master.js';
+import { getTenantPool } from './db/tenant.js';
 
 export const createTenant = async (payload) => {
   const { name, companyName, email, password } = payload;
   if (!name || !companyName || !email || !password) throw badRequest('Missing required fields');
 
-  const schemaName = `tenant_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-  const tenantId = `T${Date.now()}`;
-  const userId = `U${Date.now()}`;
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const dbName = `loan_tenant_${safeName}_${Date.now()}`;
+  const dbUser = `user_${safeName}_${Date.now()}`;
+  
+  // Generate random password for the DB user (in a real app, use a strong generator)
+  const dbPass = `pass_${randomUUID().replace(/-/g, '')}`;
 
-  await transaction(async (client) => {
-    await client.query(
-      'INSERT INTO tenants (id, name, company_name, schema_name) VALUES ($1, $2, $3, $4)',
-      [tenantId, name, companyName, schemaName]
+  // 1. Create DB and User using Root Pool (Requires superuser privileges)
+  const rootClient = await rootPool.connect();
+  try {
+    await rootClient.query(`CREATE DATABASE "${dbName}"`);
+    await rootClient.query(`CREATE ROLE "${dbUser}" WITH LOGIN PASSWORD '${dbPass}'`);
+    await rootClient.query(`GRANT ALL PRIVILEGES ON DATABASE "${dbName}" TO "${dbUser}"`);
+  } catch (e) {
+    rootClient.release();
+    throw badRequest(`Failed to provision database: ${e.message}`);
+  } finally {
+    rootClient.release();
+  }
+
+  // We need to connect to the new database as SUPERUSER to set schema permissions and extensions
+  const newDbUrl = new URL(process.env.ROOT_DB_URL);
+  newDbUrl.pathname = `/${dbName}`;
+  const newDbSuperClient = new pg.Client({ connectionString: newDbUrl.toString() });
+  await newDbSuperClient.connect();
+  
+  try {
+    await newDbSuperClient.query(`GRANT ALL ON SCHEMA public TO "${dbUser}"`);
+    await newDbSuperClient.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+  } finally {
+    await newDbSuperClient.end();
+  }
+
+  // 2. Register Tenant in Master Database
+  const masterClient = await masterPool.connect();
+  let tenantId;
+  try {
+    const res = await masterClient.query(
+      `INSERT INTO master_users (company_name, email, password_hash, db_name, db_user, db_password, role) 
+       VALUES ($1, $2, $3, $4, $5, $6, 'admin') RETURNING id`,
+      [companyName, email.trim().toLowerCase(), await bcrypt.hash(password, 10), dbName, dbUser, dbPass]
     );
+    tenantId = res.rows[0].id;
+  } finally {
+    masterClient.release();
+  }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await client.query(
-      'INSERT INTO global_users (id, tenant_id, name, email, password, role) VALUES ($1, $2, $3, $4, $5, $6)',
-      [userId, tenantId, 'Admin User', email, hashedPassword, 'superadmin']
-    );
-
-    const statements = getTenantSchemaSql(schemaName)
+  // 3. Run Migrations and Seed Admin User on New Tenant Database
+  const tenantPool = await getTenantPool(tenantId);
+  const tClient = await tenantPool.connect();
+  try {
+    const { tenantSchemaSql } = await import('./schema.js');
+    const statements = tenantSchemaSql
       .split(';')
       .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+      .filter((s) => s.length > 0 && !s.includes('CREATE EXTENSION')); // skip extension
 
     for (const stmt of statements) {
-      await client.query(stmt);
+      await tClient.query(stmt);
     }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await tClient.query(
+      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
+      [name || 'Admin User', email, hashedPassword, 'admin']
+    );
+    
+    // Seed settings for company name
+    await tClient.query(
+      `INSERT INTO settings ("key", value) VALUES ($1, $2)`,
+      ['organization', JSON.stringify({ orgName: companyName })]
+    );
+
+  } finally {
+    tClient.release();
+  }
+
+  sendWelcomeEmail(email.trim(), name || 'Admin User', password, 'Admin', companyName).catch(err => {
+    console.error('Failed to send welcome email:', err);
   });
 
-  return { tenantId, schemaName, companyName };
+  return { tenantId, dbName, companyName };
 };
 
 // --- User Management (Super Admin only) ---
@@ -860,10 +962,26 @@ const getTenantIdFromContext = async () => {
 };
 
 export const getTenantUsers = async () => {
-  const tenantId = await getTenantIdFromContext();
+  const tenantId = tenantContext.getStore();
+  if (!tenantId) {
+    // Super Admin: list all client organizations (Admins)
+    const { masterPool } = await import('./db/master.js');
+    const { rows } = await masterPool.query(
+      'SELECT id, company_name, email, status, created_at FROM master_users WHERE role = $1 ORDER BY created_at DESC',
+      ['admin']
+    );
+    return rows.map(row => ({
+      id: row.id,
+      name: row.company_name,
+      email: row.email,
+      role: 'admin',
+      isActive: row.status === 'active',
+      createdAt: row.created_at,
+    }));
+  }
+
   const { rows } = await query(
-    'SELECT id, name, email, role, is_active, created_at FROM global_users WHERE tenant_id = $1 ORDER BY created_at DESC',
-    [tenantId]
+    'SELECT id, name, email, role, is_active, created_at FROM users ORDER BY created_at DESC'
   );
   return rows.map(row => ({
     id: row.id,
@@ -876,43 +994,68 @@ export const getTenantUsers = async () => {
 };
 
 export const createTenantUser = async (payload) => {
-  const tenantId = await getTenantIdFromContext();
+  const tenantId = tenantContext.getStore();
   const { name, email, password, role } = payload;
   if (!name || !email || !password) throw badRequest('Missing required fields');
-  
-  // Enforce role to be strictly 'admin' since SuperAdmins cannot be created via UI
+
+  if (!tenantId) {
+    // Super Admin creating a new client organization (Admin)
+    const result = await createTenant({
+      name: name,
+      companyName: name,
+      email: email,
+      password: password,
+    });
+    return { id: result.tenantId, name: name, email: email, role: 'admin' };
+  }
+
+  // Organization admin creating staff within their own org
   const userRole = 'admin';
 
-  // Check email exists
-  const { rows } = await query('SELECT id FROM global_users WHERE lower(email) = lower($1)', [email.trim()]);
-  if (rows.length > 0) throw conflict('A user with this email already exists');
+  const { rows } = await query('SELECT id FROM users WHERE lower(email) = lower($1)', [email.trim()]);
+  if (rows.length > 0) throw conflict('A user with this email already exists in this organization');
 
-  const userId = `U${Date.now()}`;
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  await query(
-    'INSERT INTO global_users (id, tenant_id, name, email, password, role) VALUES ($1, $2, $3, $4, $5, $6)',
-    [userId, tenantId, name.trim(), email.trim(), hashedPassword, userRole]
+  const res = await query(
+    'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
+    [name.trim(), email.trim(), hashedPassword, userRole]
   );
+  
+  const userId = res.rows[0].id;
+  const companyName = await getSetting('organization').then(s => s?.orgName).catch(() => 'VanniLoan');
 
-  // Fetch company name for the email
-  const { rows: tenantRows } = await query('SELECT company_name FROM tenants WHERE id = $1', [tenantId]);
-  const companyName = tenantRows[0]?.company_name || 'VanniLoan';
-
-  // Send the welcome email with credentials
   sendWelcomeEmail(email.trim(), name.trim(), password, 'Admin', companyName).catch(err => {
-    console.error('Failed to send welcome email (async):', err);
+    console.error('Failed to send welcome email:', err);
   });
 
   return { id: userId, name, email, role: userRole };
 };
 
 export const deleteTenantUser = async (userId) => {
-  const tenantId = await getTenantIdFromContext();
-  // Ensure the user doesn't delete themselves (this check is typically in the route, but good here too)
-  const { rows } = await query('SELECT role FROM global_users WHERE id = $1 AND tenant_id = $2', [userId, tenantId]);
+  const tenantId = tenantContext.getStore();
+  
+  if (!tenantId) {
+    // Super Admin suspending/deleting a client organization
+    const { masterPool } = await import('./db/master.js');
+    const { rows } = await masterPool.query('SELECT id, company_name, status FROM master_users WHERE id = $1 AND role = $2', [userId, 'admin']);
+    if (rows.length === 0) throw notFound('Organization not found');
+    
+    // Toggle status: active -> suspended, suspended -> delete
+    if (rows[0].status === 'active') {
+      await masterPool.query('UPDATE master_users SET status = $1 WHERE id = $2', ['suspended', userId]);
+      return { message: `Organization "${rows[0].company_name}" has been suspended` };
+    } else {
+      await masterPool.query('DELETE FROM master_users WHERE id = $1', [userId]);
+      return { message: `Organization "${rows[0].company_name}" has been deleted` };
+    }
+  }
+
+  const { rows } = await query('SELECT role FROM users WHERE id = $1', [userId]);
   if (rows.length === 0) throw notFound('User not found');
   
-  await query('DELETE FROM global_users WHERE id = $1 AND tenant_id = $2', [userId, tenantId]);
+  if (rows[0].role === 'superadmin') throw badRequest('Cannot delete the primary owner account');
+  
+  await query('DELETE FROM users WHERE id = $1', [userId]);
   return { message: 'User deleted successfully' };
-};
+};

@@ -264,7 +264,13 @@ import { tenantContext } from './database.js';
 
 export const createApp = () => createServer(async (req, res) => {
   try {
-    const tenantId = req.headers['x-tenant-id'];
+    let tenantId = req.headers['x-tenant-id'];
+    
+    // Auto-fix stale browser cache if the user hasn't logged out
+    if (tenantId === 'tenant_default') {
+      tenantId = null;
+    }
+
     if (tenantId) {
       tenantContext.run(tenantId, async () => {
         try {

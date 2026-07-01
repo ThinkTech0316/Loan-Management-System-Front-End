@@ -1,29 +1,34 @@
-export const globalSchemaSql = `
-CREATE TABLE IF NOT EXISTS tenants (
-  id VARCHAR(255) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  company_name VARCHAR(255) NOT NULL,
-  logo_url VARCHAR(500),
-  schema_name VARCHAR(255) NOT NULL UNIQUE,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+export const masterSchemaSql = `
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE IF NOT EXISTS global_users (
-  id VARCHAR(255) PRIMARY KEY,
-  tenant_id VARCHAR(255) NOT NULL,
+CREATE TABLE IF NOT EXISTS master_users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  company_name VARCHAR(255),
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'admin',
+  db_name VARCHAR(255),
+  db_user VARCHAR(255),
+  db_password VARCHAR(255),
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_master_user_status CHECK (status IN ('active', 'suspended')),
+  CONSTRAINT chk_master_user_role CHECK (role IN ('superadmin', 'admin'))
+);
+`;
+
+export const tenantSchemaSql = `
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   role VARCHAR(50) NOT NULL DEFAULT 'admin',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_global_users_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-`;
-
-export const getTenantSchemaSql = (schemaName) => `
-CREATE SCHEMA IF NOT EXISTS "${schemaName}";
-SET search_path TO "${schemaName}";
 
 CREATE TABLE IF NOT EXISTS borrowers (
   id VARCHAR(255) PRIMARY KEY,

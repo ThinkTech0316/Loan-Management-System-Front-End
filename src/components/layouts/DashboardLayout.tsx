@@ -7,7 +7,7 @@ import { Button } from '../atoms/Button';
 import { Toaster } from 'sonner';
 import { ThemeToggle } from '../atoms/ThemeToggle';
 import { useBranding } from '../../contexts/BrandingContext';
-import { apiService } from '../../services/mockApi';
+import { apiService } from '../../services/api';
 
 export const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);

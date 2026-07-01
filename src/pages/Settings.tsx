@@ -2,19 +2,19 @@ import React from 'react';
 import { Card } from '../components/atoms/Card';
 import { Button } from '../components/atoms/Button';
 import { Input } from '../components/atoms/Input';
-import { 
-  User, 
-  Building2, 
-  Bell, 
-  Shield, 
-  Palette, 
+import {
+  User,
+  Building2,
+  Bell,
+  Shield,
+  Palette,
   Save,
   Camera,
   Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBranding } from '../contexts/BrandingContext';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('profile');
@@ -32,10 +32,23 @@ const Settings: React.FC = () => {
     setBrandLogoUrl(logoUrl);
   }, [systemName, logoColor, logoUrl]);
 
+  const user = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('auth_user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+
   const [profilePhoto, setProfilePhoto] = React.useState<string | null>(null);
-  const [firstName, setFirstName] = React.useState('Admin');
-  const [lastName, setLastName] = React.useState('');
-  const [profileEmail, setProfileEmail] = React.useState('admin@vanniloan.com');
+
+  // Try to split full name into first and last if possible
+  const defaultFirstName = user?.name ? user.name.split(' ')[0] : 'Admin';
+  const defaultLastName = user?.name && user.name.split(' ').length > 1 ? user.name.substring(user.name.indexOf(' ') + 1) : '';
+
+  const [firstName, setFirstName] = React.useState(defaultFirstName);
+  const [lastName, setLastName] = React.useState(defaultLastName);
+  const [profileEmail, setProfileEmail] = React.useState(user?.email || 'admin@vanniloan.com');
   const [profilePhone, setProfilePhone] = React.useState('');
   const [profileBio, setProfileBio] = React.useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -75,7 +88,7 @@ const Settings: React.FC = () => {
       if (data?.email) setProfileEmail(data.email);
       if (data?.phone) setProfilePhone(data.phone);
       if (data?.bio) setProfileBio(data.bio);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const profileInitials = React.useMemo(() => {
@@ -96,14 +109,14 @@ const Settings: React.FC = () => {
 
   const handleRemovePhoto = async () => {
     setProfilePhoto(null);
-    await apiService.updateSetting('profile', { profilePhoto: null }).catch(() => {});
+    await apiService.updateSetting('profile', { profilePhoto: null }).catch(() => { });
     toast.success('Profile photo removed.');
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    
+
     try {
       // Save branding if on company tab
       if (activeTab === 'company') {
@@ -196,20 +209,20 @@ const Settings: React.FC = () => {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            
+
             // Map colors dynamically
-            const colorClass = isActive 
+            const colorClass = isActive
               ? tab.color === 'primary' ? 'bg-primary/10 text-primary border-r-2 border-primary'
                 : tab.color === 'secondary' ? 'bg-secondary/10 text-secondary border-r-2 border-secondary'
-                : tab.color === 'amber' ? 'bg-amber-500/10 text-amber-600 border-r-2 border-amber-500'
-                : 'bg-blue-500/10 text-blue-600 border-r-2 border-blue-500'
+                  : tab.color === 'amber' ? 'bg-amber-500/10 text-amber-600 border-r-2 border-amber-500'
+                    : 'bg-blue-500/10 text-blue-600 border-r-2 border-blue-500'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-r-2 border-transparent';
 
             const iconClass = isActive
               ? tab.color === 'primary' ? 'text-primary'
                 : tab.color === 'secondary' ? 'text-secondary'
-                : tab.color === 'amber' ? 'text-amber-600'
-                : 'text-blue-600'
+                  : tab.color === 'amber' ? 'text-amber-600'
+                    : 'text-blue-600'
               : 'text-slate-400';
 
             return (
@@ -229,7 +242,7 @@ const Settings: React.FC = () => {
         <div className="flex-1">
           <Card className="overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-emerald-400" />
-            
+
             {activeTab === 'profile' && (
               <form onSubmit={handleSave} className="p-8 space-y-8 animate-scale-in">
                 <div className="flex items-center gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
@@ -249,8 +262,8 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">{firstName} {lastName}</h2>
-                    <p className="text-sm text-slate-500 font-medium mb-3">System Administrator</p>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display">{firstName} {lastName || ''}</h2>
+                    <p className="text-sm text-slate-500 font-medium mb-3 capitalize">{user?.role === 'superadmin' ? 'System Administrator' : 'Administrator'}</p>
                     <div className="flex gap-2">
                       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleProfilePhotoUpload} className="hidden" />
                       <Button type="button" size="sm" variant="outline" className="h-8 cursor-pointer" onClick={() => fileInputRef.current?.click()}>Change Picture</Button>
@@ -270,7 +283,7 @@ const Settings: React.FC = () => {
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 tracking-wide">
                     Bio / Role Description
                   </label>
-                  <textarea 
+                  <textarea
                     className="flex min-h-[100px] w-full rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-4 py-3 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 transition-all duration-300 shadow-sm hover:shadow-md resize-none"
                     value={profileBio}
                     onChange={(e) => setProfileBio(e.target.value)}
@@ -301,21 +314,21 @@ const Settings: React.FC = () => {
                     <p className="text-slate-500 font-medium text-sm">Customize the platform name and primary logo color to match your brand.</p>
                   </div>
                 </div>
-                
+
                 <div className="space-y-6 max-w-xl">
-                  <Input 
-                    label="System Name" 
+                  <Input
+                    label="System Name"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    placeholder="e.g. VanniLoan" 
+                    placeholder="e.g. VanniLoan"
                   />
 
                   <div className="space-y-3">
-                    <Input 
-                      label="Logo Image URL (Optional)" 
+                    <Input
+                      label="Logo Image URL (Optional)"
                       value={brandLogoUrl}
                       onChange={(e) => setBrandLogoUrl(e.target.value)}
-                      placeholder="https://example.com/logo.png" 
+                      placeholder="https://example.com/logo.png"
                     />
                     <div className="flex items-center gap-4">
                       <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
@@ -323,14 +336,14 @@ const Settings: React.FC = () => {
                       <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                     </div>
                     <div>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
+                      <input
+                        type="file"
+                        accept="image/*"
                         onChange={handleLogoUpload}
-                        className="hidden" 
+                        className="hidden"
                         id="logo-upload"
                       />
-                      <label 
+                      <label
                         htmlFor="logo-upload"
                         className="flex items-center justify-center gap-2 w-full h-11 px-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer text-sm font-medium"
                       >
@@ -356,19 +369,17 @@ const Settings: React.FC = () => {
                           key={color.id}
                           type="button"
                           onClick={() => setBrandColor(color.id)}
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition-all duration-300 ${
-                            brandColor === color.id 
-                              ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition-all duration-300 ${brandColor === color.id
+                              ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm'
                               : 'border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600'
-                          }`}
+                            }`}
                         >
-                          <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-inner ${
-                            color.id === 'primary' ? 'from-emerald-400 to-emerald-600' :
-                            color.id === 'secondary' ? 'from-indigo-400 to-indigo-600' :
-                            color.id === 'amber' ? 'from-amber-400 to-amber-600' :
-                            color.id === 'blue' ? 'from-blue-400 to-blue-600' :
-                            'from-red-400 to-red-600'
-                          }`} />
+                          <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-inner ${color.id === 'primary' ? 'from-emerald-400 to-emerald-600' :
+                              color.id === 'secondary' ? 'from-indigo-400 to-indigo-600' :
+                                color.id === 'amber' ? 'from-amber-400 to-amber-600' :
+                                  color.id === 'blue' ? 'from-blue-400 to-blue-600' :
+                                    'from-red-400 to-red-600'
+                            }`} />
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{color.label}</span>
                         </button>
                       ))}
@@ -388,7 +399,7 @@ const Settings: React.FC = () => {
             {activeTab === 'notifications' && (
               <form onSubmit={handleSave} className="p-8 space-y-6 animate-scale-in">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white font-display border-b border-slate-100 dark:border-slate-800 pb-4">Email Notifications</h2>
-                
+
                 <div className="space-y-4">
                   {[
                     { title: 'Daily Collection Summary', desc: 'Receive a daily report of all EMI collections.' },

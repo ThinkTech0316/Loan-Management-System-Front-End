@@ -14,7 +14,7 @@ import {
   Wallet,
   AlertCircle
 } from 'lucide-react';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 import type { Repayment, Loan } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';

@@ -23,7 +23,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { apiService } from '../services/mockApi';
+import { apiService } from '../services/api';
 import type { Loan, Repayment } from '../types';
 import { toast } from 'sonner';
 

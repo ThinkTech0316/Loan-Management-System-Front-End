@@ -243,17 +243,6 @@ export const apiService = {
     fetchWithTenant(`${API_BASE}/users/${id}`, {
       method: 'DELETE',
     }).then(res => handleResponse<any>(res)),
-
-  // Tenants / Companies Management
-  getTenants: () =>
-    fetchWithTenant(`${API_BASE}/tenants`).then(res => handleResponse<any[]>(res)),
-
-  createTenant: (data: any) =>
-    fetchWithTenant(`${API_BASE}/tenants`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    }).then(res => handleResponse<any>(res)),
 };
 
 export interface Notification {
