@@ -260,27 +260,45 @@ const routeRequest = async (req, res) => {
   throw notFound('Route not found');
 };
 
-import { tenantContext } from './database.js';
+import { tenantContext, userContext } from './database.js';
 
 export const createApp = () => createServer(async (req, res) => {
   try {
     let tenantId = req.headers['x-tenant-id'];
+    let userId = req.headers['x-user-id'];
     
     // Auto-fix stale browser cache if the user hasn't logged out
     if (tenantId === 'tenant_default') {
       tenantId = null;
     }
 
+    const runRoute = async () => {
+      try {
+        await routeRequest(req, res);
+      } catch (error) {
+        handleError(res, error);
+      }
+    };
+
+    const runWithUser = async () => {
+      if (userId) {
+        await new Promise(resolve => {
+          userContext.run(userId, async () => {
+            await runRoute();
+            resolve();
+          });
+        });
+      } else {
+        await runRoute();
+      }
+    };
+
     if (tenantId) {
       tenantContext.run(tenantId, async () => {
-        try {
-          await routeRequest(req, res);
-        } catch (error) {
-          handleError(res, error);
-        }
+        await runWithUser();
       });
     } else {
-      await routeRequest(req, res);
+      await runWithUser();
     }
   } catch (error) {
     handleError(res, error);

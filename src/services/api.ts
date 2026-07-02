@@ -13,9 +13,18 @@ const API_BASE = '/api';
 
 const fetchWithTenant = async (url: string, options: RequestInit = {}) => {
   const tenantId = localStorage.getItem('tenant_id');
+  const userStr = localStorage.getItem('user');
   const headers = new Headers(options.headers || {});
   if (tenantId) {
     headers.set('X-Tenant-Id', tenantId);
+  }
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      if (user.id) headers.set('X-User-Id', user.id);
+    } catch (e) {
+      // Ignore parse error
+    }
   }
   return fetch(url, { ...options, headers });
 };

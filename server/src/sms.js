@@ -32,9 +32,10 @@ const formatPhoneNumber = (phone) => {
  * 
  * @param {string} recipientPhone - The borrower's phone number
  * @param {string} message - The SMS message body
+ * @param {string} senderId - Optional custom sender ID
  * @returns {Promise<object|null>} - The API response data, or null if SMS is disabled
  */
-export const sendSMS = async (recipientPhone, message) => {
+export const sendSMS = async (recipientPhone, message, senderId = null) => {
   const token = config.textlkApiToken;
 
   if (!token) {
@@ -56,7 +57,7 @@ export const sendSMS = async (recipientPhone, message) => {
       },
       body: JSON.stringify({
         recipient,
-        sender_id: config.textlkSenderId,
+        sender_id: senderId || config.textlkSenderId,
         type: 'plain',
         message,
       }),

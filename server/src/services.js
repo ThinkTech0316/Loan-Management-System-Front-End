@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { sendSMS } from './sms.js';
 import { sendWelcomeEmail } from './email.js';
 import bcrypt from 'bcryptjs';
-import { query, transaction } from './database.js';
+import { query, transaction, tenantContext, userContext } from './database.js';
 import { badRequest, conflict, notFound, unauthorized } from './errors.js';
 import {
   validateBorrowerPayload,
@@ -194,6 +194,7 @@ export const login = async (payload) => {
           role: user.role,
           tenantId: isSuperAdmin ? null : user.id, // For clients, their master_users ID is the tenant ID
           companyName: isSuperAdmin ? 'SaaS Platform' : user.company_name,
+          phone: user.phone,
           logoUrl: null,
         },
       };
@@ -222,6 +223,7 @@ export const login = async (payload) => {
               role: user.role,
               tenantId: client.id, // This is returned to frontend, which sets X-Tenant-Id
               companyName: client.company_name,
+              phone: user.phone,
               logoUrl: null,
             },
           };
@@ -428,9 +430,27 @@ export const createLoan = async (payload) => {
     firstDueDate.setMonth(firstDueDate.getMonth() + 1);
   }
   const dueDateStr = firstDueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  // Fetch admin phone to use as sender ID
+  let senderPhone = null;
+  const currentUserId = userContext.getStore();
+  const tenantId = tenantContext.getStore();
+  if (currentUserId) {
+    if (tenantId) {
+      // It's a tenant admin in users table
+      const res = await query('SELECT phone FROM users WHERE id = $1', [currentUserId]);
+      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
+    } else {
+      // It's a superadmin in master_users table
+      const { masterPool } = await import('./db/master.js');
+      const res = await masterPool.query('SELECT phone FROM master_users WHERE id = $1', [currentUserId]);
+      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
+    }
+  }
+
   sendSMS(
     borrower.phone,
-    `Dear ${borrower.name}, your loan of Rs. ${Number(payload.amount).toLocaleString()} has been disbursed. Duration: ${payload.durationMonths} months. First repayment due: ${dueDateStr}. Thank you - VanniLoan`
+    `Dear ${borrower.name}, your loan of Rs. ${Number(payload.amount).toLocaleString()} has been disbursed. Duration: ${payload.durationMonths} months. First repayment due: ${dueDateStr}. Thank you - VanniLoan`,
+    senderPhone
   ).catch(() => { });
 
   return getLoan(id);
@@ -681,9 +701,27 @@ export const createFixedDeposit = async (payload) => {
 
   // Send SMS notification to borrower
   const matDateStr = new Date(`${normalized.maturityDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  // Fetch admin phone to use as sender ID
+  let senderPhone = null;
+  const currentUserId = userContext.getStore();
+  const tenantId = tenantContext.getStore();
+  if (currentUserId) {
+    if (tenantId) {
+      // It's a tenant admin in users table
+      const res = await query('SELECT phone FROM users WHERE id = $1', [currentUserId]);
+      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
+    } else {
+      // It's a superadmin in master_users table
+      const { masterPool } = await import('./db/master.js');
+      const res = await masterPool.query('SELECT phone FROM master_users WHERE id = $1', [currentUserId]);
+      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
+    }
+  }
+
   sendSMS(
     borrower.phone,
-    `Dear ${borrower.name}, your Fixed Deposit of Rs. ${Number(normalized.principalAmount).toLocaleString()} has been created. Maturity date: ${matDateStr}. Maturity amount: Rs. ${Number(normalized.maturityAmount).toLocaleString()}. Thank you - VanniLoan`
+    `Dear ${borrower.name}, your Fixed Deposit of Rs. ${Number(normalized.principalAmount).toLocaleString()} has been created. Maturity date: ${matDateStr}. Maturity amount: Rs. ${Number(normalized.maturityAmount).toLocaleString()}. Thank you - VanniLoan`,
+    senderPhone
   ).catch(() => { });
 
   return getFixedDeposit(id);
@@ -803,7 +841,11 @@ export const getSetting = async (key) => {
   }
 
   const { rows } = await query('SELECT value FROM settings WHERE key = $1', [key]);
-  if (rows.length === 0) throw notFound('Setting not found');
+  if (rows.length === 0) {
+    if (key === 'profile') return { firstName: '', lastName: '', role: 'admin' };
+    if (key === 'organization') return { orgName: 'VanniLoan' };
+    throw notFound('Setting not found');
+  }
   return rows[0].value;
 };
 
@@ -859,8 +901,8 @@ import { rootPool, masterPool } from './db/master.js';
 import { getTenantPool } from './db/tenant.js';
 
 export const createTenant = async (payload) => {
-  const { name, companyName, email, password } = payload;
-  if (!name || !companyName || !email || !password) throw badRequest('Missing required fields');
+  const { name, companyName, email, password, phone } = payload;
+  if (!name || !companyName || !email || !password || !phone) throw badRequest('Missing required fields');
 
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
   const dbName = `loan_tenant_${safeName}_${Date.now()}`;
@@ -900,9 +942,9 @@ export const createTenant = async (payload) => {
   let tenantId;
   try {
     const res = await masterClient.query(
-      `INSERT INTO master_users (company_name, email, password_hash, db_name, db_user, db_password, role) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'admin') RETURNING id`,
-      [companyName, email.trim().toLowerCase(), await bcrypt.hash(password, 10), dbName, dbUser, dbPass]
+      `INSERT INTO master_users (company_name, email, password_hash, db_name, db_user, db_password, phone, role) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'admin') RETURNING id`,
+      [companyName, email.trim().toLowerCase(), await bcrypt.hash(password, 10), dbName, dbUser, dbPass, phone]
     );
     tenantId = res.rows[0].id;
   } finally {
@@ -925,8 +967,8 @@ export const createTenant = async (payload) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await tClient.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
-      [name || 'Admin User', email, hashedPassword, 'admin']
+      'INSERT INTO users (name, email, password, phone, role) VALUES ($1, $2, $3, $4, $5)',
+      [name || 'Admin User', email, hashedPassword, phone, 'admin']
     );
 
     // Seed settings for company name
@@ -948,7 +990,7 @@ export const createTenant = async (payload) => {
 
 // --- User Management (Super Admin only) ---
 
-import { tenantContext } from './database.js';
+// tenantContext and userContext are imported at the top of this file
 
 const getTenantIdFromContext = async () => {
   const schemaName = tenantContext.getStore();
@@ -996,8 +1038,8 @@ export const getTenantUsers = async () => {
 
 export const createTenantUser = async (payload) => {
   const tenantId = tenantContext.getStore();
-  const { name, email, password, role } = payload;
-  if (!name || !email || !password) throw badRequest('Missing required fields');
+  const { name, email, password, role, phone } = payload;
+  if (!name || !email || !password || !phone) throw badRequest('Missing required fields');
 
   if (!tenantId) {
     // Super Admin creating a new client organization (Admin)
@@ -1006,8 +1048,9 @@ export const createTenantUser = async (payload) => {
       companyName: name,
       email: email,
       password: password,
+      phone: phone,
     });
-    return { id: result.tenantId, name: name, email: email, role: 'admin' };
+    return { id: result.tenantId, name: name, email: email, phone: phone, role: 'admin' };
   }
 
   // Organization admin creating staff within their own org
@@ -1019,8 +1062,8 @@ export const createTenantUser = async (payload) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const res = await query(
-    'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
-    [name.trim(), email.trim(), hashedPassword, userRole]
+    'INSERT INTO users (name, email, password, phone, role) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+    [name.trim(), email.trim(), hashedPassword, phone.trim(), userRole]
   );
 
   const userId = res.rows[0].id;
@@ -1030,7 +1073,7 @@ export const createTenantUser = async (payload) => {
     console.error('Failed to send welcome email:', err);
   });
 
-  return { id: userId, name, email, role: userRole };
+  return { id: userId, name, email, phone, role: userRole };
 };
 
 export const deleteTenantUser = async (userId) => {

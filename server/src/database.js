@@ -5,6 +5,9 @@ import { masterPool } from './db/master.js';
 // This holds the tenantId (Client UUID) for the current async execution context
 export const tenantContext = new AsyncLocalStorage();
 
+// This holds the userId for the current async execution context
+export const userContext = new AsyncLocalStorage();
+
 export const query = async (text, params = []) => {
   const tenantId = tenantContext.getStore();
   

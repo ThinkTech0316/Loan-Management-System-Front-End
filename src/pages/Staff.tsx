@@ -35,6 +35,7 @@ const Staff: React.FC = () => {
   // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'superadmin' | 'admin'>('admin');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,20 +57,21 @@ const Staff: React.FC = () => {
     setIsModalOpen(false);
     setName('');
     setEmail('');
+    setPhone('');
     setPassword('');
     setRole('admin');
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !phone) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await apiService.createUser({ name, email, password, role });
+      await apiService.createUser({ name, email, password, phone, role });
       toast.success('User created successfully');
       handleCloseModal();
       fetchUsers();
@@ -235,6 +237,12 @@ const Staff: React.FC = () => {
                 placeholder="e.g. jane@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+              <Input
+                label="Phone Number"
+                placeholder="e.g. 0773630237"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
               <Input
                 label="Temporary Password"
