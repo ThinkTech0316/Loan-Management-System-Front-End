@@ -11,6 +11,7 @@ import {
   validateLoanPayload,
   validateRepaymentPayload,
 } from './validators.js';
+import { config } from './config.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ID_TABLES = new Set(['borrowers', 'loans', 'repayments', 'fixed_deposits']);
@@ -201,16 +202,16 @@ export const login = async (payload) => {
 
   // 2. Check Tenant Staff (Iterate through active clients)
   const { rows: clients } = await masterPool.query('SELECT * FROM master_users WHERE role = $1 AND status = $2', ['admin', 'active']);
-  
+
   for (const client of clients) {
     try {
       const tenantPool = await getTenantPool(client.id);
       const { rows: users } = await tenantPool.query('SELECT * FROM users WHERE lower(email) = $1 AND is_active = TRUE', [email]);
-      
+
       if (users.length > 0) {
         const user = users[0];
         const passwordMatch = await bcrypt.compare(password, user.password);
-        
+
         if (passwordMatch) {
           return {
             token: Buffer.from(`${user.id}:${Date.now()}`).toString('base64url'),
@@ -430,7 +431,7 @@ export const createLoan = async (payload) => {
   sendSMS(
     borrower.phone,
     `Dear ${borrower.name}, your loan of Rs. ${Number(payload.amount).toLocaleString()} has been disbursed. Duration: ${payload.durationMonths} months. First repayment due: ${dueDateStr}. Thank you - VanniLoan`
-  ).catch(() => {});
+  ).catch(() => { });
 
   return getLoan(id);
 };
@@ -683,7 +684,7 @@ export const createFixedDeposit = async (payload) => {
   sendSMS(
     borrower.phone,
     `Dear ${borrower.name}, your Fixed Deposit of Rs. ${Number(normalized.principalAmount).toLocaleString()} has been created. Maturity date: ${matDateStr}. Maturity amount: Rs. ${Number(normalized.maturityAmount).toLocaleString()}. Thank you - VanniLoan`
-  ).catch(() => {});
+  ).catch(() => { });
 
   return getFixedDeposit(id);
 };
@@ -842,7 +843,7 @@ export const changePassword = async (payload) => {
   const { rows } = await query('SELECT * FROM users WHERE is_active = TRUE LIMIT 1');
   const user = rows[0];
   if (!user) throw notFound('No active user found');
-  
+
   if (user.password !== currentPassword) {
     const match = await bcrypt.compare(currentPassword, user.password);
     if (!match) throw unauthorized('Current password is incorrect');
@@ -864,7 +865,7 @@ export const createTenant = async (payload) => {
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
   const dbName = `loan_tenant_${safeName}_${Date.now()}`;
   const dbUser = `user_${safeName}_${Date.now()}`;
-  
+
   // Generate random password for the DB user (in a real app, use a strong generator)
   const dbPass = `pass_${randomUUID().replace(/-/g, '')}`;
 
@@ -882,11 +883,11 @@ export const createTenant = async (payload) => {
   }
 
   // We need to connect to the new database as SUPERUSER to set schema permissions and extensions
-  const newDbUrl = new URL(process.env.ROOT_DB_URL);
+  const newDbUrl = new URL(config.rootDbUrl);
   newDbUrl.pathname = `/${dbName}`;
   const newDbSuperClient = new pg.Client({ connectionString: newDbUrl.toString() });
   await newDbSuperClient.connect();
-  
+
   try {
     await newDbSuperClient.query(`GRANT ALL ON SCHEMA public TO "${dbUser}"`);
     await newDbSuperClient.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
@@ -927,7 +928,7 @@ export const createTenant = async (payload) => {
       'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)',
       [name || 'Admin User', email, hashedPassword, 'admin']
     );
-    
+
     // Seed settings for company name
     await tClient.query(
       `INSERT INTO settings ("key", value) VALUES ($1, $2)`,
@@ -1021,7 +1022,7 @@ export const createTenantUser = async (payload) => {
     'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
     [name.trim(), email.trim(), hashedPassword, userRole]
   );
-  
+
   const userId = res.rows[0].id;
   const companyName = await getSetting('organization').then(s => s?.orgName).catch(() => 'VanniLoan');
 
@@ -1034,13 +1035,13 @@ export const createTenantUser = async (payload) => {
 
 export const deleteTenantUser = async (userId) => {
   const tenantId = tenantContext.getStore();
-  
+
   if (!tenantId) {
     // Super Admin suspending/deleting a client organization
     const { masterPool } = await import('./db/master.js');
     const { rows } = await masterPool.query('SELECT id, company_name, status FROM master_users WHERE id = $1 AND role = $2', [userId, 'admin']);
     if (rows.length === 0) throw notFound('Organization not found');
-    
+
     // Toggle status: active -> suspended, suspended -> delete
     if (rows[0].status === 'active') {
       await masterPool.query('UPDATE master_users SET status = $1 WHERE id = $2', ['suspended', userId]);
@@ -1053,9 +1054,9 @@ export const deleteTenantUser = async (userId) => {
 
   const { rows } = await query('SELECT role FROM users WHERE id = $1', [userId]);
   if (rows.length === 0) throw notFound('User not found');
-  
+
   if (rows[0].role === 'superadmin') throw badRequest('Cannot delete the primary owner account');
-  
+
   await query('DELETE FROM users WHERE id = $1', [userId]);
   return { message: 'User deleted successfully' };
-};
+};
