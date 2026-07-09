@@ -4,9 +4,9 @@ import { Card } from '../components/atoms/Card';
 import { Button } from '../components/atoms/Button';
 import { Badge } from '../components/atoms/Badge.tsx';
 import { Input } from '../components/atoms/Input';
-import { 
-  Search, 
-  Download, 
+import {
+  Search,
+  Download,
   Plus,
   Eye,
   FileText,
@@ -22,7 +22,13 @@ import { toast } from 'sonner';
 const Repayments: React.FC = () => {
   const [repayments, setRepayments] = React.useState<Repayment[]>([]);
   const [loans, setLoans] = React.useState<Loan[]>([]);
+  const [allLoans, setAllLoans] = React.useState<Loan[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const user = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch { return null; }
+  }, []);
+  const isReadOnly = user?.isReadOnly === true;
 
   // Form State
   const [loanId, setLoanId] = React.useState('');
@@ -33,6 +39,9 @@ const Repayments: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
+  // View Details Modal State
+  const [selectedRepayment, setSelectedRepayment] = React.useState<Repayment | null>(null);
+
   const isRecordModalOpen = searchParams.get('record') === 'true';
 
   const fetchData = React.useCallback(async () => {
@@ -40,8 +49,9 @@ const Repayments: React.FC = () => {
       const fetchedRepayments = await apiService.getRepayments();
       const fetchedLoans = await apiService.getLoans();
       setRepayments(fetchedRepayments);
-      
+
       const activeLoans = fetchedLoans.filter(l => l.status === 'active' || l.status === 'overdue');
+      setAllLoans(fetchedLoans);
       setLoans(activeLoans);
       if (activeLoans.length > 0 && !loanId) {
         setLoanId(activeLoans[0].id);
@@ -98,7 +108,7 @@ const Repayments: React.FC = () => {
     const newErrors: Record<string, string> = {};
 
     if (!loanId) newErrors.loanId = 'Please select a loan';
-    
+
     const amtNum = parseFloat(amount);
     if (!amount.trim()) {
       newErrors.amount = 'Repayment amount is required';
@@ -138,6 +148,39 @@ const Repayments: React.FC = () => {
     }
   };
 
+  const downloadReceipt = (payment: Repayment) => {
+    const loan = allLoans.find(l => l.id === payment.loanId);
+    const borrowerName = loan?.borrowerName || 'N/A';
+
+    const receiptContent = `
+=================================
+       VANNILOAN RECEIPT
+=================================
+Receipt ID: ${payment.id}
+Date: ${new Date(payment.date).toLocaleDateString()}
+Client Name: ${borrowerName}
+Loan Reference: ${payment.loanId}
+
+Payment Amount: Rs. ${payment.amount.toLocaleString()}
+Payment Method: ${payment.method.replace('_', ' ').toUpperCase()}
+Reference: ${payment.reference || 'N/A'}
+Status: ${payment.status.toUpperCase()}
+=================================
+Thank you for your payment!
+`;
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Receipt_${payment.id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success('Receipt downloaded successfully');
+  };
+
   // Stats calculations
   const collectedToday = repayments
     .filter(r => {
@@ -164,10 +207,12 @@ const Repayments: React.FC = () => {
             <Download className="h-4 w-4" />
             Download History
           </Button>
-          <Button onClick={handleOpenModal}>
-            <Plus className="h-4 w-4" />
-            Record Payment
-          </Button>
+          {!isReadOnly && (
+            <Button onClick={handleOpenModal}>
+              <Plus className="h-4 w-4" />
+              Record Payment
+            </Button>
+          )}
         </div>
       </div>
 
@@ -216,13 +261,13 @@ const Repayments: React.FC = () => {
 
       <Card className="overflow-hidden animate-slide-in-up" style={{ animationDelay: '200ms' }}>
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 to-amber-500" />
-        
+
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 relative z-10">
           <div className="relative w-full md:w-[400px] group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search by receipt ID or loan ID..." 
+            <input
+              type="text"
+              placeholder="Search by receipt ID or loan ID..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-sm dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-200 shadow-sm transition-all duration-300"
             />
           </div>
@@ -243,8 +288,8 @@ const Repayments: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {repayments.map((payment, index) => (
-                <tr 
-                  key={payment.id} 
+                <tr
+                  key={payment.id}
                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
@@ -279,10 +324,10 @@ const Repayments: React.FC = () => {
                   </td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" title="View Details" className="hover:bg-primary/10 hover:text-primary">
+                      <Button variant="ghost" size="icon" title="View Details" className="hover:bg-primary/10 hover:text-primary" onClick={() => setSelectedRepayment(payment)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" title="Download Receipt" className="hover:bg-secondary/10 hover:text-secondary">
+                      <Button variant="ghost" size="icon" title="Download Receipt" className="hover:bg-secondary/10 hover:text-secondary" onClick={() => downloadReceipt(payment)}>
                         <FileText className="h-4 w-4" />
                       </Button>
                     </div>
@@ -300,7 +345,7 @@ const Repayments: React.FC = () => {
           <div className="relative w-full max-w-md max-h-[90vh] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-200/50 dark:border-slate-700/50 overflow-hidden flex flex-col">
             {/* Gradient accent */}
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 to-amber-500" />
-            
+
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 relative z-10">
               <div className="flex items-center gap-3">
@@ -309,17 +354,17 @@ const Repayments: React.FC = () => {
                 </div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">Record EMI Payment</h2>
               </div>
-              <button 
+              <button
                 onClick={handleCloseModal}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             {/* Form */}
             <form onSubmit={handleRecord} className="p-6 space-y-5 relative z-10">
-              
+
               {/* Select Loan */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 tracking-wide">
@@ -332,9 +377,8 @@ const Repayments: React.FC = () => {
                 ) : (
                   <div className="relative group">
                     <select
-                      className={`flex h-11 w-full rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 transition-all duration-300 shadow-sm hover:shadow-md appearance-none ${
-                        errors.loanId ? 'border-red-400 focus-visible:ring-red-500/20 focus-visible:border-red-500' : ''
-                      }`}
+                      className={`flex h-11 w-full rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 transition-all duration-300 shadow-sm hover:shadow-md appearance-none ${errors.loanId ? 'border-red-400 focus-visible:ring-red-500/20 focus-visible:border-red-500' : ''
+                        }`}
                       value={loanId}
                       onChange={(e) => setLoanId(e.target.value)}
                     >
@@ -399,7 +443,7 @@ const Repayments: React.FC = () => {
                   onChange={(e) => setDate(e.target.value)}
                   error={errors.date}
                 />
-                
+
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                     Payment Method
@@ -407,33 +451,30 @@ const Repayments: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      className={`p-2 border rounded-xl text-xs font-medium transition-all ${
-                        method === 'bank_transfer'
+                      className={`p-2 border rounded-xl text-xs font-medium transition-all ${method === 'bank_transfer'
                           ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
                           : 'border-slate-200 hover:border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-400'
-                      }`}
+                        }`}
                       onClick={() => setMethod('bank_transfer')}
                     >
                       Bank Transfer
                     </button>
                     <button
                       type="button"
-                      className={`p-2 border rounded-xl text-xs font-medium transition-all ${
-                        method === 'cash'
+                      className={`p-2 border rounded-xl text-xs font-medium transition-all ${method === 'cash'
                           ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
                           : 'border-slate-200 hover:border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-400'
-                      }`}
+                        }`}
                       onClick={() => setMethod('cash')}
                     >
                       Cash
                     </button>
                     <button
                       type="button"
-                      className={`p-2 border rounded-xl text-xs font-medium transition-all ${
-                        method === 'mobile_wallet'
+                      className={`p-2 border rounded-xl text-xs font-medium transition-all ${method === 'mobile_wallet'
                           ? 'border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20'
                           : 'border-slate-200 hover:border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-400'
-                      }`}
+                        }`}
                       onClick={() => setMethod('mobile_wallet')}
                     >
                       Mobile Wallet
@@ -447,8 +488,8 @@ const Repayments: React.FC = () => {
                   <span>Receipt / Reference Number (Optional)</span>
                   <span className="text-[10px] font-normal text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">For admin tracking</span>
                 </label>
-                <Input 
-                  placeholder="e.g. TRN-987654321" 
+                <Input
+                  placeholder="e.g. TRN-987654321"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                 />
@@ -474,6 +515,77 @@ const Repayments: React.FC = () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* View Details Modal */}
+      {selectedRepayment && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-scale-in">
+          <div className="relative w-full max-w-sm max-h-[90vh] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-200/50 dark:border-slate-700/50 overflow-hidden flex flex-col">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary to-emerald-500" />
+
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">Receipt Details</h2>
+              </div>
+              <button
+                onClick={() => setSelectedRepayment(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 relative z-10 text-sm">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Receipt ID</span>
+                <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{selectedRepayment.id}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Loan Ref</span>
+                <span className="font-bold text-amber-600">{selectedRepayment.loanId}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Client Name</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{allLoans.find(l => l.id === selectedRepayment.loanId)?.borrowerName || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Date</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{new Date(selectedRepayment.date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Amount</span>
+                <span className="text-lg font-extrabold bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">Rs. {selectedRepayment.amount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-medium">Method</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300 capitalize">{selectedRepayment.method.replace('_', ' ')}</span>
+              </div>
+              {selectedRepayment.reference && (
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-500 font-medium">Reference</span>
+                  <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{selectedRepayment.reference}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Status</span>
+                <Badge variant={selectedRepayment.status === 'paid' ? 'success' : 'error'} className="shadow-sm">
+                  {selectedRepayment.status.toUpperCase()}
+                </Badge>
+              </div>
+
+              <div className="pt-4 mt-2">
+                <Button className="w-full" onClick={() => downloadReceipt(selectedRepayment)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Text Receipt
+                </Button>
+              </div>
+            </div>
           </div>
         </div>,
         document.body

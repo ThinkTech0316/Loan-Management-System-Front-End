@@ -1,4 +1,5 @@
 import { config } from './config.js';
+import { tenantContext } from './database.js';
 
 /**
  * Format a Sri Lankan phone number to international format (94XXXXXXXXX).
@@ -43,9 +44,12 @@ export const sendSMS = async (recipientPhone, message, senderId = null) => {
     return null;
   }
 
-  // For testing: override recipient to the test number
-  const testNumber = '94773630237';
-  const recipient = testNumber; // Change to formatPhoneNumber(recipientPhone) for production
+  const recipient = formatPhoneNumber(recipientPhone);
+
+  if (!recipient) {
+    console.warn('[SMS] No valid recipient phone number provided. SMS not sent.');
+    return null;
+  }
 
   try {
     const response = await fetch('https://app.text.lk/api/v3/sms/send', {
@@ -57,7 +61,7 @@ export const sendSMS = async (recipientPhone, message, senderId = null) => {
       },
       body: JSON.stringify({
         recipient,
-        sender_id: senderId || config.textlkSenderId,
+        sender_id: 'VanniLoan',
         type: 'plain',
         message,
       }),
@@ -67,6 +71,15 @@ export const sendSMS = async (recipientPhone, message, senderId = null) => {
 
     if (data.status) {
       console.log(`[SMS] Sent successfully to ${recipient}: "${message.substring(0, 50)}..."`);
+      try {
+        const tenantId = tenantContext.getStore();
+        if (tenantId) {
+          const { masterPool } = await import('./db/master.js');
+          await masterPool.query('UPDATE master_users SET sms_count = sms_count + 1 WHERE id = $1', [tenantId]);
+        }
+      } catch (dbErr) {
+        console.error('[SMS] Failed to increment SMS count:', dbErr);
+      }
     } else {
       console.error(`[SMS] Failed: ${data.message}`);
     }

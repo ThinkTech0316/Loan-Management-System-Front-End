@@ -30,10 +30,14 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const [systemName, setSystemNameState] = useState<string>(
-    () => localStorage.getItem('branding-name') || getAuthUser().companyName || 'VanniLoan'
-  );
-  
+  const [systemName, setSystemNameState] = useState<string>(() => {
+    const stored = localStorage.getItem('branding-name');
+    if (stored && stored !== 'SaaS Platform') return stored;
+    const authCompany = getAuthUser().companyName;
+    if (authCompany && authCompany !== 'SaaS Platform') return authCompany;
+    return 'VanniLoan';
+  });
+
   const [logoColor, setLogoColorState] = useState<string>(
     () => localStorage.getItem('branding-color') || 'primary'
   );

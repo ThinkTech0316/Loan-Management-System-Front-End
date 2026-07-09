@@ -31,6 +31,11 @@ const Loans: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { confirm, ConfirmDialog } = useConfirm();
 
+  const user = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch { return null; }
+  }, []);
+  const isReadOnly = user?.isReadOnly === true;
+
   // Details Modal State
   const [selectedLoanId, setSelectedLoanId] = React.useState<string | null>(null);
   const [scheduleInstallments, setScheduleInstallments] = React.useState<Installment[]>([]);
@@ -273,10 +278,12 @@ const Loans: React.FC = () => {
           <p className="text-slate-500 font-medium text-sm">Track and manage all active and past loan agreements.</p>
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto mt-4 md:mt-0">
-          <Button onClick={handleOpenModal} className="flex-1 md:flex-none">
-            <Plus className="h-4 w-4" />
-            Create New Loan
-          </Button>
+          {!isReadOnly && (
+            <Button onClick={handleOpenModal} className="flex-1 md:flex-none">
+              <Plus className="h-4 w-4" />
+              Create New Loan
+            </Button>
+          )}
         </div>
       </div>
 
@@ -426,19 +433,21 @@ const Loans: React.FC = () => {
                         {new Date(loan.startDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteLoan(loan.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        {!isReadOnly && (
+                          <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLoan(loan.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -612,14 +621,16 @@ const Loans: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-0.5">Full amortization schedule and repayment history</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
-                  onClick={() => handleDeleteLoan()}
-                >
-                  Delete Loan
-                </Button>
+                {!isReadOnly && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+                    onClick={() => handleDeleteLoan()}
+                  >
+                    Delete Loan
+                  </Button>
+                )}
                 <button
                   onClick={() => setSelectedLoanId(null)}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -723,23 +734,27 @@ const Loans: React.FC = () => {
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              {inst.status === 'paid' ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 text-xs px-3 border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-900/30"
-                                  onClick={handleUndoPayment}
-                                >
-                                  Undo
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  className="h-8 text-xs px-3 shadow-glow"
-                                  onClick={() => setQuickPayInstallment(inst)}
-                                >
-                                  Mark Paid
-                                </Button>
+                              {!isReadOnly && (
+                                <>
+                                  {inst.status === 'paid' ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs px-3 border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                                      onClick={handleUndoPayment}
+                                    >
+                                      Undo
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      className="h-8 text-xs px-3 shadow-glow"
+                                      onClick={() => setQuickPayInstallment(inst)}
+                                    >
+                                      Mark Paid
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </td>
                           </tr>

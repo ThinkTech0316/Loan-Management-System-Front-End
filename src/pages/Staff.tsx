@@ -8,10 +8,16 @@ import {
   Users,
   Plus,
   Search,
-  Trash2,
   ShieldAlert,
   ShieldCheck,
-  X
+  X,
+  Lock,
+  Unlock,
+  BarChart,
+  MessageSquare,
+  Users as UsersIcon,
+  CreditCard,
+  Briefcase
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -30,6 +36,13 @@ const Staff: React.FC = () => {
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Stats Modal
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [selectedUserStats, setSelectedUserStats] = useState<any>(null);
+  const [selectedUserName, setSelectedUserName] = useState('');
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
   const { confirm, ConfirmDialog } = useConfirm();
 
   // Form State
@@ -82,15 +95,32 @@ const Staff: React.FC = () => {
     }
   };
 
-  const handleDelete = async (userId: string) => {
-    if (await confirm("Are you sure you want to remove this user from the system?")) {
+  const handleSuspendToggle = async (user: StaffUser, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const action = user.isActive ? 'suspend' : 'reactivate';
+    if (await confirm(`Are you sure you want to ${action} this user?`)) {
       try {
-        await apiService.deleteUser(userId);
-        toast.success('User deleted successfully');
+        const res = await apiService.deleteUser(user.id);
+        toast.success(res.message || `User ${action}d successfully`);
         fetchUsers();
       } catch (e: any) {
-        toast.error(e.message || 'Failed to delete user');
+        toast.error(e.message || `Failed to ${action} user`);
       }
+    }
+  };
+
+  const handleViewStats = async (user: StaffUser) => {
+    setSelectedUserName(user.name);
+    setIsStatsModalOpen(true);
+    setIsLoadingStats(true);
+    try {
+      const stats = await apiService.getUserStats(user.id);
+      setSelectedUserStats(stats);
+    } catch (e) {
+      toast.error('Failed to load user stats');
+      setIsStatsModalOpen(false);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -152,14 +182,18 @@ const Staff: React.FC = () => {
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group">
+                  <tr 
+                    key={user.id} 
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+                    onClick={() => handleViewStats(user)}
+                  >
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold text-sm shadow-sm">
                           {user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2)}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{user.name}</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">{user.name}</p>
                           <p className="text-xs text-slate-500">{user.email}</p>
                         </div>
                       </div>
@@ -186,14 +220,18 @@ const Staff: React.FC = () => {
                     </td>
                     <td className="px-6 py-5 text-right">
                       {user.role !== 'superadmin' && (
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                            onClick={() => handleDelete(user.id)}
+                            title={user.isActive ? "Suspend User" : "Reactivate User"}
+                            className={user.isActive 
+                              ? "text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                              : "text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                            }
+                            onClick={(e) => handleSuspendToggle(user, e)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {user.isActive ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                           </Button>
                         </div>
                       )}
@@ -263,6 +301,65 @@ const Staff: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Stats Modal */}
+      {isStatsModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-scale-in" onClick={() => setIsStatsModalOpen(false)}>
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 to-indigo-400" />
+
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                  <BarChart className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">{selectedUserName}'s Stats</h2>
+              </div>
+              <button onClick={() => setIsStatsModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {isLoadingStats ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="h-8 w-8 rounded-full border-4 border-slate-200 border-t-purple-500 animate-spin" />
+                </div>
+              ) : selectedUserStats ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-blue-100 dark:border-blue-800/30">
+                    <UsersIcon className="h-6 w-6 text-blue-500 mb-2" />
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">Total Borrowers</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{selectedUserStats.borrowers}</p>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-amber-100 dark:border-amber-800/30">
+                    <Briefcase className="h-6 w-6 text-amber-500 mb-2" />
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-1">Active Loans</p>
+                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{selectedUserStats.activeLoans}</p>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-emerald-100 dark:border-emerald-800/30">
+                    <CreditCard className="h-6 w-6 text-emerald-500 mb-2" />
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mb-1">Active FDs</p>
+                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{selectedUserStats.activeFDs}</p>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-purple-100 dark:border-purple-800/30">
+                    <MessageSquare className="h-6 w-6 text-purple-500 mb-2" />
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-1">SMS Sent</p>
+                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{selectedUserStats.smsCount}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-slate-500 py-8">Failed to load statistics.</p>
+              )}
+            </div>
+            
+            <div className="flex justify-end gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+              <Button type="button" onClick={() => setIsStatsModalOpen(false)}>Close</Button>
+            </div>
           </div>
         </div>,
         document.body

@@ -3,7 +3,7 @@ import { URL } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { notFound } from './errors.js';
+import { notFound, forbidden } from './errors.js';
 import { handleError, parseJsonBody, sendJson, setCorsHeaders } from './http.js';
 import {
   addBorrower,
@@ -45,6 +45,7 @@ import {
   getTenantUsers,
   createTenantUser,
   deleteTenantUser,
+  getTenantStats,
 } from './services.js';
 
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
@@ -144,6 +145,18 @@ const routeRequest = async (req, res) => {
   }
 
   const { url, pathParts } = parseRoute(req);
+
+  // Read-only access control check for suspended users
+  const userId = req.headers['x-user-id'];
+  if (userId && req.method !== 'GET' && req.method !== 'OPTIONS' && pathParts[1] !== 'auth') {
+    const { masterPool } = await import('./db/master.js');
+    const { rows } = await masterPool.query('SELECT status FROM master_users WHERE id = $1', [userId]);
+    // Also check tenant users if needed, but the primary requirement was for the main admin
+    // For now, if master_users says suspended, block it.
+    if (rows.length > 0 && rows[0].status === 'suspended') {
+      throw forbidden('Your account is suspended. You have read-only access.');
+    }
+  }
 
   // Serve uploaded files
   if (pathParts[0] === 'uploads') {
@@ -253,6 +266,7 @@ const routeRequest = async (req, res) => {
 
   if (resource === 'users') {
     if (req.method === 'GET' && !id) return ok(res, await getTenantUsers());
+    if (req.method === 'GET' && id && subResource === 'stats') return ok(res, await getTenantStats(id));
     if (req.method === 'POST' && !id) return ok(res, await createTenantUser(await parseJsonBody(req)), 201);
     if (req.method === 'DELETE' && id) return ok(res, await deleteTenantUser(id));
   }

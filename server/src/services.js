@@ -179,7 +179,7 @@ export const login = async (payload) => {
   const { getTenantPool } = await import('./db/tenant.js');
 
   // 1. Check Master Users (Super Admin or Client Owners)
-  const { rows: masterUsers } = await masterPool.query('SELECT * FROM master_users WHERE lower(email) = $1 AND status = $2', [email, 'active']);
+  const { rows: masterUsers } = await masterPool.query('SELECT * FROM master_users WHERE lower(email) = $1 AND status IN ($2, $3)', [email, 'active', 'suspended']);
   if (masterUsers.length > 0) {
     const user = masterUsers[0];
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -196,6 +196,7 @@ export const login = async (payload) => {
           companyName: isSuperAdmin ? 'SaaS Platform' : user.company_name,
           phone: user.phone,
           logoUrl: null,
+          isReadOnly: user.status === 'suspended',
         },
       };
     }
@@ -225,6 +226,7 @@ export const login = async (payload) => {
               companyName: client.company_name,
               phone: user.phone,
               logoUrl: null,
+              isReadOnly: false, // tenant staff can only login if client is active, so not readonly by default
             },
           };
         }
@@ -430,27 +432,9 @@ export const createLoan = async (payload) => {
     firstDueDate.setMonth(firstDueDate.getMonth() + 1);
   }
   const dueDateStr = firstDueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  // Fetch admin phone to use as sender ID
-  let senderPhone = null;
-  const currentUserId = userContext.getStore();
-  const tenantId = tenantContext.getStore();
-  if (currentUserId) {
-    if (tenantId) {
-      // It's a tenant admin in users table
-      const res = await query('SELECT phone FROM users WHERE id = $1', [currentUserId]);
-      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
-    } else {
-      // It's a superadmin in master_users table
-      const { masterPool } = await import('./db/master.js');
-      const res = await masterPool.query('SELECT phone FROM master_users WHERE id = $1', [currentUserId]);
-      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
-    }
-  }
-
   sendSMS(
     borrower.phone,
-    `Dear ${borrower.name}, your loan of Rs. ${Number(payload.amount).toLocaleString()} has been disbursed. Duration: ${payload.durationMonths} months. First repayment due: ${dueDateStr}. Thank you - VanniLoan`,
-    senderPhone
+    `Dear ${borrower.name}, your loan of Rs. ${Number(payload.amount).toLocaleString()} has been disbursed. Duration: ${payload.durationMonths} months. First repayment due: ${dueDateStr}. Thank you - VanniLoan`
   ).catch(() => { });
 
   return getLoan(id);
@@ -701,27 +685,9 @@ export const createFixedDeposit = async (payload) => {
 
   // Send SMS notification to borrower
   const matDateStr = new Date(`${normalized.maturityDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  // Fetch admin phone to use as sender ID
-  let senderPhone = null;
-  const currentUserId = userContext.getStore();
-  const tenantId = tenantContext.getStore();
-  if (currentUserId) {
-    if (tenantId) {
-      // It's a tenant admin in users table
-      const res = await query('SELECT phone FROM users WHERE id = $1', [currentUserId]);
-      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
-    } else {
-      // It's a superadmin in master_users table
-      const { masterPool } = await import('./db/master.js');
-      const res = await masterPool.query('SELECT phone FROM master_users WHERE id = $1', [currentUserId]);
-      if (res.rows.length > 0) senderPhone = res.rows[0].phone;
-    }
-  }
-
   sendSMS(
     borrower.phone,
-    `Dear ${borrower.name}, your Fixed Deposit of Rs. ${Number(normalized.principalAmount).toLocaleString()} has been created. Maturity date: ${matDateStr}. Maturity amount: Rs. ${Number(normalized.maturityAmount).toLocaleString()}. Thank you - VanniLoan`,
-    senderPhone
+    `Dear ${borrower.name}, your Fixed Deposit of Rs. ${Number(normalized.principalAmount).toLocaleString()} has been created. Maturity date: ${matDateStr}. Maturity amount: Rs. ${Number(normalized.maturityAmount).toLocaleString()}. Thank you - VanniLoan`
   ).catch(() => { });
 
   return getFixedDeposit(id);
@@ -1036,6 +1002,30 @@ export const getTenantUsers = async () => {
   }));
 };
 
+export const getTenantStats = async (targetTenantId) => {
+  const { masterPool } = await import('./db/master.js');
+  const { getTenantPool } = await import('./db/tenant.js');
+
+  const { rows: masterUsers } = await masterPool.query('SELECT sms_count FROM master_users WHERE id = $1', [targetTenantId]);
+  const smsCount = masterUsers[0]?.sms_count || 0;
+
+  try {
+    const tenantPool = await getTenantPool(targetTenantId);
+    const { rows: borrowers } = await tenantPool.query('SELECT COUNT(*) as count FROM borrowers WHERE is_deleted = FALSE');
+    const { rows: loans } = await tenantPool.query('SELECT COUNT(*) as count FROM loans WHERE status = $1 OR status = $2', ['active', 'overdue']);
+    const { rows: fds } = await tenantPool.query('SELECT COUNT(*) as count FROM fixed_deposits WHERE status = $1', ['active']);
+    
+    return {
+      borrowers: parseInt(borrowers[0].count, 10),
+      activeLoans: parseInt(loans[0].count, 10),
+      activeFDs: parseInt(fds[0].count, 10),
+      smsCount: smsCount
+    };
+  } catch (err) {
+    return { borrowers: 0, activeLoans: 0, activeFDs: 0, smsCount };
+  }
+};
+
 export const createTenantUser = async (payload) => {
   const tenantId = tenantContext.getStore();
   const { name, email, password, role, phone } = payload;
@@ -1085,13 +1075,13 @@ export const deleteTenantUser = async (userId) => {
     const { rows } = await masterPool.query('SELECT id, company_name, status FROM master_users WHERE id = $1 AND role = $2', [userId, 'admin']);
     if (rows.length === 0) throw notFound('Organization not found');
 
-    // Toggle status: active -> suspended, suspended -> delete
+    // Toggle status: active -> suspended, suspended -> active
     if (rows[0].status === 'active') {
       await masterPool.query('UPDATE master_users SET status = $1 WHERE id = $2', ['suspended', userId]);
       return { message: `Organization "${rows[0].company_name}" has been suspended` };
     } else {
-      await masterPool.query('DELETE FROM master_users WHERE id = $1', [userId]);
-      return { message: `Organization "${rows[0].company_name}" has been deleted` };
+      await masterPool.query('UPDATE master_users SET status = $1 WHERE id = $2', ['active', userId]);
+      return { message: `Organization "${rows[0].company_name}" has been reactivated` };
     }
   }
 

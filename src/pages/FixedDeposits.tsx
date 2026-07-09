@@ -31,6 +31,11 @@ const FixedDeposits: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { confirm, ConfirmDialog } = useConfirm();
 
+  const user = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch { return null; }
+  }, []);
+  const isReadOnly = user?.isReadOnly === true;
+
   // Details Modal State
   const [selectedFDId, setSelectedFDId] = React.useState<string | null>(null);
   const [fdEarningsSchedule, setFdEarningsSchedule] = React.useState<FDEarning[]>([]);
@@ -216,10 +221,12 @@ const FixedDeposits: React.FC = () => {
           <p className="text-slate-500 font-medium text-sm">Track and manage customer fixed deposits and investments.</p>
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto mt-4 md:mt-0">
-          <Button onClick={handleOpenModal} className="flex-1 md:flex-none">
-            <Plus className="h-4 w-4" />
-            Create Fixed Deposit
-          </Button>
+          {!isReadOnly && (
+            <Button onClick={handleOpenModal} className="flex-1 md:flex-none">
+              <Plus className="h-4 w-4" />
+              Create Fixed Deposit
+            </Button>
+          )}
         </div>
       </div>
 
@@ -355,19 +362,21 @@ const FixedDeposits: React.FC = () => {
                     {new Date(fd.maturityDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-5 text-right">
-                    <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteFD(fd.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {!isReadOnly && (
+                      <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFD(fd.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               )
@@ -524,14 +533,16 @@ const FixedDeposits: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-0.5">Month-by-month earnings projection</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
-                  onClick={() => handleDeleteFD()}
-                >
-                  Delete FD
-                </Button>
+                {!isReadOnly && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
+                    onClick={() => handleDeleteFD()}
+                  >
+                    Delete FD
+                  </Button>
+                )}
                 <button 
                   onClick={() => setSelectedFDId(null)}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"

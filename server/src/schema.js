@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS master_users (
   db_user VARCHAR(255),
   db_password VARCHAR(255),
   phone VARCHAR(100),
+  sms_count INTEGER DEFAULT 0,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_master_user_status CHECK (status IN ('active', 'suspended')),

@@ -252,6 +252,9 @@ export const apiService = {
     fetchWithTenant(`${API_BASE}/users/${id}`, {
       method: 'DELETE',
     }).then(res => handleResponse<any>(res)),
+
+  getUserStats: (id: string) =>
+    fetchWithTenant(`${API_BASE}/users/${id}/stats`).then(res => handleResponse<any>(res)),
 };
 
 export interface Notification {

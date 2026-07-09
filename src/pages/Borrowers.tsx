@@ -31,6 +31,11 @@ const Borrowers: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = React.useState<'active' | 'recycle_bin'>('active');
   const { confirm, ConfirmDialog } = useConfirm();
+
+  const user = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch { return null; }
+  }, []);
+  const isReadOnly = user?.isReadOnly === true;
   
   // Form State
   const [name, setName] = React.useState('');
@@ -189,7 +194,7 @@ const Borrowers: React.FC = () => {
               Recycle Bin
             </button>
           </div>
-          {viewMode === 'active' && (
+          {viewMode === 'active' && !isReadOnly && (
             <>
               <Button variant="outline" className="flex-1 sm:flex-none">
                 <Download className="h-4 w-4" />
@@ -246,7 +251,7 @@ const Borrowers: React.FC = () => {
                 <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
                 <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Joined</th>
-                <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                {!isReadOnly && <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -304,39 +309,41 @@ const Borrowers: React.FC = () => {
                     <td className="px-4 py-4 text-sm font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
                       {new Date(borrower.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      {viewMode === 'active' ? (
-                        <div className="flex justify-end gap-2">
-                          <button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(borrower.id)}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Move to Recycle Bin"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => handleRestore(borrower.id)}
-                            className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1"
-                            title="Restore Client"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => handlePermDelete(borrower.id)}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-1"
-                            title="Delete Permanently"
-                          >
-                            <AlertTriangle className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                    {!isReadOnly && (
+                      <td className="px-4 py-4 text-right">
+                        {viewMode === 'active' ? (
+                          <div className="flex justify-end gap-2">
+                            <button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(borrower.id)}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Move to Recycle Bin"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => handleRestore(borrower.id)}
+                              className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1"
+                              title="Restore Client"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handlePermDelete(borrower.id)}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-1"
+                              title="Delete Permanently"
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

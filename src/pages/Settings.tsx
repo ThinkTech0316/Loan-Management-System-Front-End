@@ -39,6 +39,7 @@ const Settings: React.FC = () => {
       return {};
     }
   }, []);
+  const isReadOnly = user?.isReadOnly === true;
 
   const [profilePhoto, setProfilePhoto] = React.useState<string | null>(null);
 
@@ -291,10 +292,12 @@ const Settings: React.FC = () => {
                 </div>
 
                 <div className="pt-4 flex justify-end">
-                  <Button type="submit" isLoading={isSaving} className="shadow-glow-primary px-8">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </Button>
+                  {!isReadOnly && (
+                    <Button type="submit" isLoading={isSaving} className="shadow-glow-primary px-8">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </Button>
+                  )}
                 </div>
               </form>
             )}
@@ -388,10 +391,12 @@ const Settings: React.FC = () => {
                 </div>
 
                 <div className="pt-6 flex justify-end">
-                  <Button type="submit" isLoading={isSaving} className="shadow-glow-primary px-8">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Branding
-                  </Button>
+                  {!isReadOnly && (
+                    <Button type="submit" isLoading={isSaving} className="shadow-glow-primary px-8">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Branding
+                    </Button>
+                  )}
                 </div>
               </form>
             )}
@@ -421,9 +426,11 @@ const Settings: React.FC = () => {
                 </div>
 
                 <div className="pt-6 flex justify-end">
-                  <Button type="submit" isLoading={isSaving} className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 shadow-glow-amber">
-                    Save Preferences
-                  </Button>
+                  {!isReadOnly && (
+                    <Button type="submit" isLoading={isSaving} className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 shadow-glow-amber">
+                      Save Preferences
+                    </Button>
+                  )}
                 </div>
               </form>
             )}
@@ -465,10 +472,12 @@ const Settings: React.FC = () => {
                 </div>
 
                 <div className="pt-4 flex justify-end">
-                  <Button type="submit" isLoading={isChangingPassword} className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-glow-primary px-8">
-                    <Lock className="h-4 w-4 mr-2" />
-                    Update Password
-                  </Button>
+                  {!isReadOnly && (
+                    <Button type="submit" isLoading={isChangingPassword} className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-glow-primary px-8">
+                      <Lock className="h-4 w-4 mr-2" />
+                      Update Password
+                    </Button>
+                  )}
                 </div>
               </form>
             )}

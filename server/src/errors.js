@@ -10,4 +10,5 @@ export class HttpError extends Error {
 export const notFound = (message = 'Resource not found') => new HttpError(404, message);
 export const badRequest = (message = 'Bad request', details = undefined) => new HttpError(400, message, details);
 export const unauthorized = (message = 'Unauthorized') => new HttpError(401, message);
+export const forbidden = (message = 'Forbidden') => new HttpError(403, message);
 export const conflict = (message = 'Conflict', details = undefined) => new HttpError(409, message, details);

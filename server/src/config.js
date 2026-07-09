@@ -37,7 +37,7 @@ export const config = {
   masterDbUrl: process.env.MASTER_DB_URL ?? 'postgresql://postgres:user@localhost:5432/loan_master',
   jwtSecret: process.env.JWT_SECRET ?? 'super_secret_jwt_key_12345',
   textlkApiToken: process.env.TEXTLK_API_TOKEN ?? '',
-  textlkSenderId: process.env.TEXTLK_SENDER_ID ?? 'TextLKDemo',
+  textlkSenderId: process.env.TEXTLK_SENDER_ID ?? 'VanniLoan',
   smtpUser: process.env.SMTP_USER ?? '',
   smtpPass: process.env.SMTP_PASS ?? '',
 };
