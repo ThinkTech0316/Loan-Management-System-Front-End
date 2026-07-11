@@ -19,6 +19,7 @@ import { SidebarItem } from '../molecules/SidebarItem';
 import { Button } from '../atoms/Button';
 import { useNavigate } from 'react-router-dom';
 import { useBranding } from '../../contexts/BrandingContext';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -29,17 +30,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const navigate = useNavigate();
   const { systemName, logoColor, logoUrl } = useBranding();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   // Close mobile sidebar on route change
   React.useEffect(() => {
     setMobileOpen(false);
   }, [window.location.pathname]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('tenant_id');
-    navigate('/login');
+  const handleLogout = async () => {
+    if (await confirm('Are you sure you want to sign out?')) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      localStorage.removeItem('tenant_id');
+      navigate('/login');
+    }
   };
 
   const user = React.useMemo(() => {
@@ -54,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
 
   return (
     <>
+      <ConfirmDialog />
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div 

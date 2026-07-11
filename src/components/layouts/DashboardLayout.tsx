@@ -8,6 +8,7 @@ import { Toaster } from 'sonner';
 import { ThemeToggle } from '../atoms/ThemeToggle';
 import { useBranding } from '../../contexts/BrandingContext';
 import { apiService } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
 
 export const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -17,12 +18,15 @@ export const DashboardLayout: React.FC = () => {
   const [profileName, setProfileName] = React.useState('Admin');
 
   const [showUserMenu, setShowUserMenu] = React.useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('tenant_id');
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    if (await confirm('Are you sure you want to sign out?')) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      localStorage.removeItem('tenant_id');
+      window.location.href = '/login';
+    }
   };
 
   React.useEffect(() => {
@@ -39,6 +43,7 @@ export const DashboardLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full overflow-hidden mesh-gradient" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-foreground)' }}>
+      <ConfirmDialog />
       <Toaster position="top-right" richColors />
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       
