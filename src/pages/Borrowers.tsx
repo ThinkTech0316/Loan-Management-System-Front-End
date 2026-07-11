@@ -84,15 +84,19 @@ const Borrowers: React.FC = () => {
     if (!name.trim()) newErrors.name = 'Name is required';
     if (!email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
       newErrors.email = 'Please enter a valid email address';
     }
     if (!phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (phone.length < 10) {
+    } else if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/[\s-]/g, ''))) {
       newErrors.phone = 'Please enter a valid phone number';
     }
-    if (!nic.trim()) newErrors.nic = 'NIC number is required';
+    if (!nic.trim()) {
+      newErrors.nic = 'NIC number is required';
+    } else if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/i.test(nic)) {
+      newErrors.nic = 'Please enter a valid NIC (9 digits + V/X or 12 digits)';
+    }
     if (!district.trim()) newErrors.district = 'Area/Village is required';
     if (!address.trim()) newErrors.address = 'Address is required';
 

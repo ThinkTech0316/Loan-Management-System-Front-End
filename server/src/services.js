@@ -806,7 +806,7 @@ export const getSetting = async (key) => {
     return null;
   }
 
-  const { rows } = await query('SELECT value FROM settings WHERE key = $1', [key]);
+  const { rows } = await query('SELECT value FROM settings WHERE "key" = $1', [key]);
   if (rows.length === 0) {
     if (key === 'profile') return { firstName: '', lastName: '', role: 'admin' };
     if (key === 'organization') return { orgName: 'VanniLoan' };
@@ -825,17 +825,13 @@ export const upsertSetting = async (key, value) => {
   );
 
   if (key === 'organization') {
-    const tenantSchema = tenantContext.getStore();
-    if (tenantSchema) {
-      const client = await pool.connect();
-      try {
-        await client.query(
-          `UPDATE tenants SET company_name = $1, logo_url = $2 WHERE schema_name = $3`,
-          [value.orgName || 'VanniLoan', value.logoUrl || null, tenantSchema]
-        );
-      } finally {
-        client.release();
-      }
+    const tenantId = tenantContext.getStore();
+    if (tenantId) {
+      const { masterPool } = await import('./db/master.js');
+      await masterPool.query(
+        `UPDATE master_users SET company_name = $1 WHERE id = $2`,
+        [value.orgName || 'VanniLoan', tenantId]
+      );
     }
   }
 
@@ -847,18 +843,51 @@ export const changePassword = async (payload) => {
   if (!currentPassword || !newPassword) throw badRequest('Current password and new password are required');
   if (String(newPassword).length < 6) throw badRequest('New password must be at least 6 characters');
 
-  // Need a way to identify current user, defaulting to first active user in users for demo
-  const { rows } = await query('SELECT * FROM users WHERE is_active = TRUE LIMIT 1');
-  const user = rows[0];
-  if (!user) throw notFound('No active user found');
+  const userId = userContext.getStore();
+  if (!userId) throw unauthorized('User not authenticated');
 
-  if (user.password !== currentPassword) {
-    const match = await bcrypt.compare(currentPassword, user.password);
+  const tenantId = tenantContext.getStore();
+  let user;
+  let isMasterUser = false;
+
+  if (tenantId) {
+    const { masterPool } = await import('./db/master.js');
+    const { rows: masterRows } = await masterPool.query('SELECT * FROM master_users WHERE id = $1', [userId]);
+    if (masterRows.length > 0) {
+      user = masterRows[0];
+      isMasterUser = true;
+    } else {
+      const { rows } = await query('SELECT * FROM users WHERE id = $1', [userId]);
+      user = rows[0];
+    }
+  } else {
+    const { masterPool } = await import('./db/master.js');
+    const { rows } = await masterPool.query('SELECT * FROM master_users WHERE id = $1', [userId]);
+    user = rows[0];
+    isMasterUser = true;
+  }
+
+  if (!user) throw notFound('User not found');
+
+  const passwordHash = isMasterUser ? user.password_hash : user.password;
+
+  if (passwordHash !== currentPassword) {
+    const match = await bcrypt.compare(currentPassword, passwordHash);
     if (!match) throw unauthorized('Current password is incorrect');
   }
 
   const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-  await query('UPDATE users SET password = $1 WHERE id = $2', [hashedNewPassword, user.id]);
+  if (isMasterUser) {
+    const { masterPool } = await import('./db/master.js');
+    await masterPool.query('UPDATE master_users SET password_hash = $1 WHERE id = $2', [hashedNewPassword, userId]);
+    if (tenantId) {
+      await query('UPDATE users SET password = $1 WHERE lower(email) = $2', [hashedNewPassword, user.email.toLowerCase()]);
+    }
+  } else {
+    const { masterPool } = await import('./db/master.js');
+    await query('UPDATE users SET password = $1 WHERE id = $2', [hashedNewPassword, userId]);
+    await masterPool.query('UPDATE master_users SET password_hash = $1 WHERE lower(email) = $2', [hashedNewPassword, user.email.toLowerCase()]);
+  }
   return { message: 'Password changed successfully' };
 };
 
@@ -1014,7 +1043,7 @@ export const getTenantStats = async (targetTenantId) => {
     const { rows: borrowers } = await tenantPool.query('SELECT COUNT(*) as count FROM borrowers WHERE is_deleted = FALSE');
     const { rows: loans } = await tenantPool.query('SELECT COUNT(*) as count FROM loans WHERE status = $1 OR status = $2', ['active', 'overdue']);
     const { rows: fds } = await tenantPool.query('SELECT COUNT(*) as count FROM fixed_deposits WHERE status = $1', ['active']);
-    
+
     return {
       borrowers: parseInt(borrowers[0].count, 10),
       activeLoans: parseInt(loans[0].count, 10),

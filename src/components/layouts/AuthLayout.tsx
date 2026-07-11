@@ -19,7 +19,7 @@ export const AuthLayout: React.FC = () => {
           <div className="flex items-center gap-3 mb-12 animate-slide-in-up">
             <div className={`icon-3d icon-3d-${logoColor} h-12 w-12 flex items-center justify-center overflow-hidden animate-float-slow shrink-0`}>
               {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                <img src={logoUrl.startsWith('/uploads') ? `/api${logoUrl}` : logoUrl} alt="Logo" className="w-full h-full object-cover" />
               ) : (
                 <HandCoins className="text-white h-6 w-6 relative z-10" />
               )}

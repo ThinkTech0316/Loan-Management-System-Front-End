@@ -174,24 +174,28 @@ const Loans: React.FC = () => {
     if (!amount.trim()) {
       newErrors.amount = 'Amount is required';
     } else if (isNaN(amtNum) || amtNum <= 0) {
-      newErrors.amount = 'Please enter a valid loan amount';
+      newErrors.amount = 'Please enter a valid positive loan amount';
     }
 
     const rateNum = parseFloat(interestRate);
     if (!interestRate.trim()) {
       newErrors.interestRate = 'Interest rate is required';
-    } else if (isNaN(rateNum) || rateNum < 0) {
-      newErrors.interestRate = 'Interest rate must be a positive number';
+    } else if (isNaN(rateNum) || rateNum < 0 || rateNum > 100) {
+      newErrors.interestRate = 'Interest rate must be between 0 and 100';
     }
 
-    const durNum = parseInt(durationMonths);
+    const durNum = Number(durationMonths);
     if (!durationMonths.trim()) {
       newErrors.durationMonths = 'Duration is required';
-    } else if (isNaN(durNum) || durNum <= 0) {
-      newErrors.durationMonths = 'Duration must be greater than 0';
+    } else if (!Number.isInteger(durNum) || durNum <= 0) {
+      newErrors.durationMonths = 'Duration must be a positive integer';
     }
 
-    if (!startDate) newErrors.startDate = 'Start date is required';
+    if (!startDate) {
+      newErrors.startDate = 'Start date is required';
+    } else if (isNaN(new Date(startDate).getTime())) {
+      newErrors.startDate = 'Invalid date';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);

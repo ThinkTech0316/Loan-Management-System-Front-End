@@ -106,14 +106,14 @@ const handleUpload = (req, res) => new Promise((resolve, reject) => {
 
     fs.writeFile(filePath, fileData, (err) => {
       if (err) { reject(err); return; }
-      resolve(`/uploads/${safeName}`);
+      resolve(`/api/uploads/${safeName}`);
     });
   });
   req.on('error', reject);
 });
 
 const serveStaticFile = (req, res, url) => {
-  const filePath = url.pathname.replace(/^\/uploads\//, '');
+  const filePath = url.pathname.replace(/^\/(api\/)?uploads\//, '');
   const sanitized = path.basename(filePath);
   const fullPath = path.join(UPLOADS_DIR, sanitized);
 
@@ -159,7 +159,7 @@ const routeRequest = async (req, res) => {
   }
 
   // Serve uploaded files
-  if (pathParts[0] === 'uploads') {
+  if (pathParts[0] === 'uploads' || (pathParts[0] === 'api' && pathParts[1] === 'uploads')) {
     serveStaticFile(req, res, url);
     return;
   }

@@ -63,7 +63,7 @@ const Settings: React.FC = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) { toast.error('Please fill in all fields'); return; }
-    if (newPassword.length < 6) { toast.error('New password must be at least 6 characters'); return; }
+    if (newPassword.length < 8) { toast.error('New password must be at least 8 characters'); return; }
     if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
     setIsChangingPassword(true);
     try {
@@ -116,6 +116,12 @@ const Settings: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (activeTab === 'profile' && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(profileEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -249,7 +255,7 @@ const Settings: React.FC = () => {
                 <div className="flex items-center gap-6 pb-8 border-b border-slate-100 dark:border-slate-800">
                   <div className="relative group cursor-pointer">
                     {profilePhoto ? (
-                      <img src={profilePhoto} alt="Profile" className="h-24 w-24 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform duration-300" />
+                      <img src={profilePhoto.startsWith('/uploads') ? `/api${profilePhoto}` : profilePhoto} alt="Profile" className="h-24 w-24 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-display text-3xl font-extrabold shadow-lg group-hover:scale-105 transition-transform duration-300">
                         {profileInitials}
@@ -307,7 +313,7 @@ const Settings: React.FC = () => {
                 <div className="flex items-center gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
                   <div className={`icon-3d icon-3d-${brandColor} h-16 w-16 overflow-hidden`}>
                     {brandLogoUrl ? (
-                      <img src={brandLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      <img src={brandLogoUrl.startsWith('/uploads') ? `/api${brandLogoUrl}` : brandLogoUrl} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
                       <Building2 className="h-8 w-8 text-white relative z-10" />
                     )}

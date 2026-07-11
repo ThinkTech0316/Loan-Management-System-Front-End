@@ -81,6 +81,18 @@ const Staff: React.FC = () => {
       toast.error('Please fill in all required fields');
       return;
     }
+    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/[\s-]/g, ''))) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
 
     setIsSubmitting(true);
     try {

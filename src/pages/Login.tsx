@@ -17,7 +17,11 @@ const Login: React.FC = () => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
-    if (!email.trim()) newErrors.email = 'Email is required';
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
     if (!password.trim()) newErrors.password = 'Password is required';
 
     if (Object.keys(newErrors).length > 0) {

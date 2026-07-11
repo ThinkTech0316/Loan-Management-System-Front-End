@@ -84,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
           <div className="flex items-center gap-3 animate-fade-in-right">
             <div className={`icon-3d icon-3d-${logoColor} h-10 w-10 flex items-center justify-center overflow-hidden animate-float-slow`}>
               {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                <img src={logoUrl.startsWith('/uploads') ? `/api${logoUrl}` : logoUrl} alt="Logo" className="w-full h-full object-cover" />
               ) : (
                 <HandCoins className="text-white h-5 w-5 relative z-10" />
               )}

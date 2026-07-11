@@ -16,6 +16,9 @@ const ForgotPassword: React.FC = () => {
     if (!email.trim()) {
       toast.error('Please enter your email address.');
       return;
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+      toast.error('Please enter a valid email address.');
+      return;
     }
     setIsLoading(true);
     try {

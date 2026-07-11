@@ -1,5 +1,6 @@
 import { config } from './config.js';
 import { bootstrapDatabase } from './bootstrap.js';
+import { initCronJobs } from './cron.js';
 
 // Auto-create database, tables, and seed data on every startup
 await bootstrapDatabase();
@@ -7,6 +8,8 @@ await bootstrapDatabase();
 const { createApp } = await import('./app.js');
 
 const server = createApp();
+
+initCronJobs();
 
 server.listen(config.port, () => {
   console.log(`Loan Management API running on http://localhost:${config.port}`);

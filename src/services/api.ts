@@ -13,7 +13,7 @@ const API_BASE = '/api';
 
 const fetchWithTenant = async (url: string, options: RequestInit = {}) => {
   const tenantId = localStorage.getItem('tenant_id');
-  const userStr = localStorage.getItem('user');
+  const userStr = localStorage.getItem('auth_user');
   const headers = new Headers(options.headers || {});
   if (tenantId) {
     headers.set('X-Tenant-Id', tenantId);
@@ -32,7 +32,7 @@ const fetchWithTenant = async (url: string, options: RequestInit = {}) => {
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || `Request failed with status ${response.status}`);
+    throw new Error(errorData.message || errorData.error?.message || `Request failed with status ${response.status}`);
   }
   const json = await response.json();
   return json.data as T;

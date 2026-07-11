@@ -113,12 +113,16 @@ const Repayments: React.FC = () => {
     if (!amount.trim()) {
       newErrors.amount = 'Repayment amount is required';
     } else if (isNaN(amtNum) || amtNum <= 0) {
-      newErrors.amount = 'Please enter a valid amount';
+      newErrors.amount = 'Please enter a valid positive amount';
     } else if (activeSelectedLoan && amtNum > activeSelectedLoan.remainingBalance) {
       newErrors.amount = `Amount cannot exceed outstanding balance of Rs. ${activeSelectedLoan.remainingBalance.toLocaleString()}`;
     }
 
-    if (!date) newErrors.date = 'Repayment date is required';
+    if (!date) {
+      newErrors.date = 'Repayment date is required';
+    } else if (isNaN(new Date(date).getTime())) {
+      newErrors.date = 'Invalid date';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);

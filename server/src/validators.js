@@ -12,10 +12,10 @@ export const validateBorrowerPayload = (payload, partial = false) => {
     if (!isNonEmptyString(payload.name)) errors.name = 'Name is required';
   }
   if (!partial || payload.email !== undefined) {
-    if (!isNonEmptyString(payload.email) || !/\S+@\S+\.\S+/.test(payload.email)) errors.email = 'Valid email is required';
+    if (!isNonEmptyString(payload.email) || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(payload.email)) errors.email = 'Valid email is required';
   }
   if (!partial || payload.phone !== undefined) {
-    if (!isNonEmptyString(payload.phone) || payload.phone.trim().length < 10) errors.phone = 'Valid phone number is required';
+    if (!isNonEmptyString(payload.phone) || !/^\+?[0-9]{10,15}$/.test(payload.phone.replace(/[\s-]/g, ''))) errors.phone = 'Valid phone number is required';
   }
   if (!partial || payload.address !== undefined) {
     if (!isNonEmptyString(payload.address)) errors.address = 'Address is required';
@@ -24,7 +24,7 @@ export const validateBorrowerPayload = (payload, partial = false) => {
     if (!isNonEmptyString(payload.district)) errors.district = 'District / area is required';
   }
   if (!partial || payload.nic !== undefined) {
-    if (!isNonEmptyString(payload.nic)) errors.nic = 'NIC number is required';
+    if (!isNonEmptyString(payload.nic) || !/^([0-9]{9}[vVxX]|[0-9]{12})$/i.test(payload.nic)) errors.nic = 'NIC number is required';
   }
   if (payload.status !== undefined && !allowedStatuses.includes(payload.status)) {
     errors.status = 'Status must be active or inactive';
@@ -48,7 +48,7 @@ export const validateLoanPayload = (payload, partial = false) => {
     if (!isPositiveNumber(payload.amount)) errors.amount = 'Amount must be a positive number';
   }
   if (!partial || payload.interestRate !== undefined) {
-    if (typeof payload.interestRate !== 'number' || payload.interestRate < 0) errors.interestRate = 'Interest rate must be a non-negative number';
+    if (typeof payload.interestRate !== 'number' || payload.interestRate < 0 || payload.interestRate > 100) errors.interestRate = 'Interest rate must be between 0 and 100';
   }
   if (!partial || payload.durationMonths !== undefined) {
     if (!Number.isInteger(payload.durationMonths) || payload.durationMonths <= 0) errors.durationMonths = 'Duration must be a positive integer';
@@ -93,7 +93,7 @@ export const validateFixedDepositPayload = (payload, partial = false) => {
     if (!isPositiveNumber(payload.principalAmount)) errors.principalAmount = 'Principal amount must be a positive number';
   }
   if (!partial || payload.interestRate !== undefined) {
-    if (typeof payload.interestRate !== 'number' || payload.interestRate < 0) errors.interestRate = 'Interest rate must be a non-negative number';
+    if (typeof payload.interestRate !== 'number' || payload.interestRate < 0 || payload.interestRate > 100) errors.interestRate = 'Interest rate must be between 0 and 100';
   }
   if (!partial || payload.durationMonths !== undefined) {
     if (!Number.isInteger(payload.durationMonths) || payload.durationMonths <= 0) errors.durationMonths = 'Duration must be a positive integer';

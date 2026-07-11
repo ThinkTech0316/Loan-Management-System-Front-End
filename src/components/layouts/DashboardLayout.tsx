@@ -95,7 +95,7 @@ export const DashboardLayout: React.FC = () => {
               </div>
               <div onClick={() => setShowUserMenu(!showUserMenu)}>
                 {profilePhoto ? (
-                  <img src={profilePhoto} alt={profileName} className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105 cursor-pointer" />
+                  <img src={profilePhoto.startsWith('/uploads') ? `/api${profilePhoto}` : profilePhoto} alt={profileName} className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105 cursor-pointer" />
                 ) : (
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105 cursor-pointer">
                     {initials}
