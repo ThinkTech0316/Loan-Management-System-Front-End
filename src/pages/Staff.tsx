@@ -12,13 +12,9 @@ import {
   ShieldCheck,
   X,
   Lock,
-  Unlock,
-  BarChart,
-  MessageSquare,
-  Users as UsersIcon,
-  CreditCard,
-  Briefcase
+  Unlock
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { useConfirm } from '../hooks/useConfirm';
@@ -27,6 +23,7 @@ interface StaffUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: 'superadmin' | 'admin';
   isActive: boolean;
   createdAt: string;
@@ -37,13 +34,8 @@ const Staff: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Stats Modal
-  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [selectedUserStats, setSelectedUserStats] = useState<any>(null);
-  const [selectedUserName, setSelectedUserName] = useState('');
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
-
   const { confirm, ConfirmDialog } = useConfirm();
+  const navigate = useNavigate();
 
   // Form State
   const [name, setName] = useState('');
@@ -52,6 +44,7 @@ const Staff: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'superadmin' | 'admin'>('admin');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const fetchUsers = React.useCallback(async () => {
     try {
@@ -73,11 +66,12 @@ const Staff: React.FC = () => {
     setPhone('');
     setPassword('');
     setRole('admin');
+    setEditingUserId(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password || !phone) {
+    if (!name || !email || !phone || (!editingUserId && !password)) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -89,19 +83,24 @@ const Staff: React.FC = () => {
       toast.error('Please enter a valid phone number');
       return;
     }
-    if (password.length < 8) {
+    if (password && password.length < 8) {
       toast.error('Password must be at least 8 characters long');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await apiService.createUser({ name, email, password, phone, role });
-      toast.success('User created successfully');
+      if (editingUserId) {
+        await apiService.updateUser(editingUserId, { name, email, password: password || undefined, phone, role });
+        toast.success('User updated successfully');
+      } else {
+        await apiService.createUser({ name, email, password, phone, role });
+        toast.success('User created successfully');
+      }
       handleCloseModal();
       fetchUsers();
     } catch (e: any) {
-      toast.error(e.message || 'Failed to create user');
+      toast.error(e.message || 'Failed to save user');
     } finally {
       setIsSubmitting(false);
     }
@@ -121,19 +120,8 @@ const Staff: React.FC = () => {
     }
   };
 
-  const handleViewStats = async (user: StaffUser) => {
-    setSelectedUserName(user.name);
-    setIsStatsModalOpen(true);
-    setIsLoadingStats(true);
-    try {
-      const stats = await apiService.getUserStats(user.id);
-      setSelectedUserStats(stats);
-    } catch (e) {
-      toast.error('Failed to load user stats');
-      setIsStatsModalOpen(false);
-    } finally {
-      setIsLoadingStats(false);
-    }
+  const handleRowClick = (user: StaffUser) => {
+    navigate(`/staff/${user.id}`, { state: { user } });
   };
 
   const filteredUsers = users.filter(u =>
@@ -197,7 +185,7 @@ const Staff: React.FC = () => {
                   <tr 
                     key={user.id} 
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
-                    onClick={() => handleViewStats(user)}
+                    onClick={() => handleRowClick(user)}
                   >
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
@@ -230,9 +218,23 @@ const Staff: React.FC = () => {
                     <td className="px-6 py-5 text-sm text-slate-600 dark:text-slate-400 font-medium">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                       {user.role !== 'superadmin' && (
                         <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingUserId(user.id);
+                              setName(user.name);
+                              setEmail(user.email);
+                              setPhone(user.phone || '');
+                              setRole(user.role);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -267,7 +269,9 @@ const Staff: React.FC = () => {
                 <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
                   <Users className="h-4 w-4" />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">Add Staff Member</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">
+                  {editingUserId ? 'Edit Staff Member' : 'Add Staff Member'}
+                </h2>
               </div>
               <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
                 <X className="h-5 w-5" />
@@ -295,83 +299,22 @@ const Staff: React.FC = () => {
                 onChange={(e) => setPhone(e.target.value)}
               />
               <Input
-                label="Temporary Password"
+                label={editingUserId ? "New Password (Optional)" : "Temporary Password"}
                 type="password"
-                placeholder="Min 8 characters"
+                placeholder={editingUserId ? "Leave blank to keep current" : "Min 8 characters"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-
-              {/* Role is strictly enforced as Admin */}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <Button type="button" variant="outline" onClick={handleCloseModal} disabled={isSubmitting}>
                   Cancel
                 </Button>
                 <Button type="submit" isLoading={isSubmitting}>
-                  Create User
+                  {editingUserId ? 'Update User' : 'Create User'}
                 </Button>
               </div>
             </form>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Stats Modal */}
-      {isStatsModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-scale-in" onClick={() => setIsStatsModalOpen(false)}>
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 to-indigo-400" />
-
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
-                  <BarChart className="h-4 w-4" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white m-0 font-display">{selectedUserName}'s Stats</h2>
-              </div>
-              <button onClick={() => setIsStatsModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              {isLoadingStats ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="h-8 w-8 rounded-full border-4 border-slate-200 border-t-purple-500 animate-spin" />
-                </div>
-              ) : selectedUserStats ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-blue-100 dark:border-blue-800/30">
-                    <UsersIcon className="h-6 w-6 text-blue-500 mb-2" />
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">Total Borrowers</p>
-                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{selectedUserStats.borrowers}</p>
-                  </div>
-                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-amber-100 dark:border-amber-800/30">
-                    <Briefcase className="h-6 w-6 text-amber-500 mb-2" />
-                    <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mb-1">Active Loans</p>
-                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{selectedUserStats.activeLoans}</p>
-                  </div>
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-emerald-100 dark:border-emerald-800/30">
-                    <CreditCard className="h-6 w-6 text-emerald-500 mb-2" />
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mb-1">Active FDs</p>
-                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{selectedUserStats.activeFDs}</p>
-                  </div>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 flex flex-col items-center justify-center border border-purple-100 dark:border-purple-800/30">
-                    <MessageSquare className="h-6 w-6 text-purple-500 mb-2" />
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-1">SMS Sent</p>
-                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{selectedUserStats.smsCount}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-slate-500 py-8">Failed to load statistics.</p>
-              )}
-            </div>
-            
-            <div className="flex justify-end gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
-              <Button type="button" onClick={() => setIsStatsModalOpen(false)}>Close</Button>
-            </div>
           </div>
         </div>,
         document.body

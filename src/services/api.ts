@@ -248,6 +248,13 @@ export const apiService = {
       body: JSON.stringify(data),
     }).then(res => handleResponse<any>(res)),
 
+  updateUser: (id: string, data: any) =>
+    fetchWithTenant(`${API_BASE}/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(res => handleResponse<any>(res)),
+
   deleteUser: (id: string) =>
     fetchWithTenant(`${API_BASE}/users/${id}`, {
       method: 'DELETE',
@@ -255,6 +262,15 @@ export const apiService = {
 
   getUserStats: (id: string) =>
     fetchWithTenant(`${API_BASE}/users/${id}/stats`).then(res => handleResponse<any>(res)),
+
+  getUserBorrowers: (id: string) =>
+    fetchWithTenant(`${API_BASE}/users/${id}/borrowers`).then(res => handleResponse<Borrower[]>(res)),
+
+  getUserLoans: (id: string) =>
+    fetchWithTenant(`${API_BASE}/users/${id}/loans`).then(res => handleResponse<Loan[]>(res)),
+
+  getUserFixedDeposits: (id: string) =>
+    fetchWithTenant(`${API_BASE}/users/${id}/fixed-deposits`).then(res => handleResponse<FixedDeposit[]>(res)),
 };
 
 export interface Notification {

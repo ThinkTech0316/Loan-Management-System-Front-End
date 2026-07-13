@@ -1005,13 +1005,14 @@ export const getTenantUsers = async () => {
     // Super Admin: list all client organizations (Admins)
     const { masterPool } = await import('./db/master.js');
     const { rows } = await masterPool.query(
-      'SELECT id, company_name, email, status, created_at FROM master_users WHERE role = $1 ORDER BY created_at DESC',
+      'SELECT id, company_name, email, phone, status, created_at FROM master_users WHERE role = $1 ORDER BY created_at DESC',
       ['admin']
     );
     return rows.map(row => ({
       id: row.id,
       name: row.company_name,
       email: row.email,
+      phone: row.phone,
       role: 'admin',
       isActive: row.status === 'active',
       createdAt: row.created_at,
@@ -1019,12 +1020,13 @@ export const getTenantUsers = async () => {
   }
 
   const { rows } = await query(
-    'SELECT id, name, email, role, is_active, created_at FROM users ORDER BY created_at DESC'
+    'SELECT id, name, email, phone, role, is_active, created_at FROM users ORDER BY created_at DESC'
   );
   return rows.map(row => ({
     id: row.id,
     name: row.name,
     email: row.email,
+    phone: row.phone,
     role: row.role,
     isActive: row.is_active,
     createdAt: row.created_at,
@@ -1053,6 +1055,33 @@ export const getTenantStats = async (targetTenantId) => {
   } catch (err) {
     return { borrowers: 0, activeLoans: 0, activeFDs: 0, smsCount };
   }
+};
+
+export const getTenantBorrowers = async (targetTenantId) => {
+  const { getTenantPool } = await import('./db/tenant.js');
+  try {
+    const pool = await getTenantPool(targetTenantId);
+    const { rows } = await pool.query('SELECT * FROM borrowers WHERE is_deleted = FALSE ORDER BY created_at DESC, id DESC');
+    return rows.map(mapBorrower);
+  } catch (e) { return []; }
+};
+
+export const getTenantLoans = async (targetTenantId) => {
+  const { getTenantPool } = await import('./db/tenant.js');
+  try {
+    const pool = await getTenantPool(targetTenantId);
+    const { rows } = await pool.query(`SELECT l.*, b.name AS borrower_name FROM loans l JOIN borrowers b ON b.id = l.borrower_id WHERE l.status IN ('active', 'overdue') ORDER BY l.created_at DESC, l.id DESC`);
+    return rows.map(mapLoan);
+  } catch (e) { return []; }
+};
+
+export const getTenantFixedDeposits = async (targetTenantId) => {
+  const { getTenantPool } = await import('./db/tenant.js');
+  try {
+    const pool = await getTenantPool(targetTenantId);
+    const { rows } = await pool.query(`SELECT fd.*, b.name AS borrower_name FROM fixed_deposits fd JOIN borrowers b ON b.id = fd.borrower_id WHERE fd.status = 'active' ORDER BY fd.created_at DESC, fd.id DESC`);
+    return rows.map(mapFixedDeposit);
+  } catch (e) { return []; }
 };
 
 export const createTenantUser = async (payload) => {
@@ -1093,6 +1122,48 @@ export const createTenantUser = async (payload) => {
   });
 
   return { id: userId, name, email, phone, role: userRole };
+};
+
+export const updateTenantUser = async (userId, payload) => {
+  const tenantId = tenantContext.getStore();
+  const { name, email, phone, password } = payload;
+
+  if (!tenantId) {
+    // Super Admin updating a client organization (Admin)
+    const { masterPool } = await import('./db/master.js');
+    const sets = [];
+    const values = [];
+    if (name) { values.push(name); sets.push(`company_name = $${values.length}`); }
+    if (email) { values.push(email); sets.push(`email = $${values.length}`); }
+    if (phone) { values.push(phone); sets.push(`phone = $${values.length}`); }
+    if (password) {
+      values.push(await bcrypt.hash(password, 10));
+      sets.push(`password_hash = $${values.length}`);
+    }
+
+    if (sets.length === 0) return { message: 'No changes provided' };
+
+    values.push(userId);
+    await masterPool.query(`UPDATE master_users SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
+    return { id: userId, name, email, phone };
+  }
+
+  // Organization admin updating staff within their own org
+  const sets = [];
+  const values = [];
+  if (name) { values.push(name); sets.push(`name = $${values.length}`); }
+  if (email) { values.push(email); sets.push(`email = $${values.length}`); }
+  if (phone) { values.push(phone); sets.push(`phone = $${values.length}`); }
+  if (password) {
+    values.push(await bcrypt.hash(password, 10));
+    sets.push(`password = $${values.length}`);
+  }
+
+  if (sets.length === 0) return { message: 'No changes provided' };
+
+  values.push(userId);
+  await query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
+  return { id: userId, name, email, phone };
 };
 
 export const deleteTenantUser = async (userId) => {

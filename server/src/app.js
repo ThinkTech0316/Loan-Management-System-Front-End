@@ -44,8 +44,12 @@ import {
   upsertSetting,
   getTenantUsers,
   createTenantUser,
+  updateTenantUser,
   deleteTenantUser,
   getTenantStats,
+  getTenantBorrowers,
+  getTenantLoans,
+  getTenantFixedDeposits,
 } from './services.js';
 
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
@@ -267,7 +271,11 @@ const routeRequest = async (req, res) => {
   if (resource === 'users') {
     if (req.method === 'GET' && !id) return ok(res, await getTenantUsers());
     if (req.method === 'GET' && id && subResource === 'stats') return ok(res, await getTenantStats(id));
+    if (req.method === 'GET' && id && subResource === 'borrowers') return ok(res, await getTenantBorrowers(id));
+    if (req.method === 'GET' && id && subResource === 'loans') return ok(res, await getTenantLoans(id));
+    if (req.method === 'GET' && id && subResource === 'fixed-deposits') return ok(res, await getTenantFixedDeposits(id));
     if (req.method === 'POST' && !id) return ok(res, await createTenantUser(await parseJsonBody(req)), 201);
+    if ((req.method === 'PATCH' || req.method === 'PUT') && id) return ok(res, await updateTenantUser(id, await parseJsonBody(req)));
     if (req.method === 'DELETE' && id) return ok(res, await deleteTenantUser(id));
   }
 

@@ -17,6 +17,7 @@ import Notifications from './pages/Notifications';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import Staff from './pages/Staff';
+import StaffDetails from './pages/StaffDetails';
 
 function ProtectedRoute() {
   const token = localStorage.getItem('auth_token');
@@ -80,6 +81,7 @@ function App() {
             
             {/* SuperAdmin Only Routes */}
             <Route path="/staff" element={<SuperAdminRoute><Staff /></SuperAdminRoute>} />
+            <Route path="/staff/:id" element={<SuperAdminRoute><StaffDetails /></SuperAdminRoute>} />
           </Route>
 
           {/* Fallback */}
